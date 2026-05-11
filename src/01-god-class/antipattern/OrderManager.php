@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace AntiPatterns\GodClass\antipattern;
 
-use AntiPatterns\Common\Database;
 use Exception;
-use PDO;
 
 /**
  * OrderManager - God Class Antipattern
@@ -24,8 +22,12 @@ use PDO;
  * - Analytics (ventas, top productos, estadisticas)
  * - Renderizado HTML (resumen pedido, carrito, lista productos)
  * - Acceso directo a base de datos con queries raw
+ *
+ * Ademas hereda de BaseManager (Inheritance Abuse):
+ * - DB connection, auth, templates, logging, config desde BD
+ * - Constructor padre hace 8 cosas antes de que OrderManager haga nada
  */
-class OrderManager
+class OrderManager extends BaseManager
 {
     // Mutable shared state - todo se lee y escribe desde cualquier metodo
     private $storeId;
@@ -33,11 +35,9 @@ class OrderManager
     private $cart;
     private $customerData;
     private $settings;
-    private $debugMode;
     private $isInvoiceMode;
     private $showShipping;
     private $showAnalytics;
-    private $db;
     private $templateData;
     private $orderCache;
     private $taxRates;
@@ -47,20 +47,22 @@ class OrderManager
     private $endDate;
     private $actionNumber;
     private $lastError;
-    private $performanceLog;
 
-    // Constructor Heavy - hace 10 cosas a la vez
+    // Constructor Heavy + Inheritance Abuse - llama a parent que hace 8 cosas + hace 5 mas
     public function __construct(int $storeId = 579314, array $config = [])
     {
+        // Inheritance Abuse: parent hace 8 cosas antes de que empecemos
+        // - DB connection, auth, config desde BD, environment detection
+        // - user loading, permissions, translations, session setup
+        parent::__construct($config);
+
         $this->storeId = $storeId; // hardcoded ID
-        $this->db = Database::getInstance();
-        $this->debugMode = $config['debug'] ?? false;
+        $this->debugMode = $config['debug'] ?? false; // duplica lo que ya hizo parent
         $this->isInvoiceMode = $config['invoice_mode'] ?? 0;
         $this->showShipping = $config['show_shipping'] ?? 0;
         $this->showAnalytics = $config['show_analytics'] ?? 0;
         $this->maxItems = 36; // magic number
         $this->currencySymbol = '€';
-        $this->performanceLog = [];
 
         // Hardcoded tax rates - deberia ser configuracion externa
         $this->taxRates = [
@@ -1070,13 +1072,6 @@ class OrderManager
         $html .= '</table>';
         $html .= '</div>';
         return $html;
-    }
-
-    private function logPerformance(string $label): void
-    {
-        if ($this->debugMode) {
-            $this->performanceLog[$label] = microtime(true);
-        }
     }
 
     // Getters para estado mutable - expone internals
