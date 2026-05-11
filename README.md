@@ -2,7 +2,7 @@
 
 Catalogo de antipatrones de diseño en codigo legacy y estrategias para estrangularlos.
 
-Basado en el analisis real de un sistema de gestion hotelera (PMS) con mas de 26,000 lineas en una sola clase PHP. Los ejemplos de codigo son generico y estan inspirados en la realidad, pero el codigo real **no** sera publicado.
+Basado en el analisis de multiples codebases PHP legacy de e-commerce. Los ejemplos de codigo son genericos y estan inspirados en patrones reales observados en la industria, pero todo el codigo es inventado y no pertenece a ningun sistema real.
 
 ## Estructura
 

@@ -1,8 +1,8 @@
 # Antipatrones de Diseño en Código Legacy
 
-> **Nota:** Este documento se basa en el análisis real de un sistema de gestión hotelera (PMS) con más de 26,000 líneas en una sola clase PHP. Los ejemplos de código están anonimizados y simplificados para ilustrar los problemas. El código real **no** será publicado.
+> **Nota:** Este documento recopila antipatrones observados en el analisis de multiples codebases PHP legacy del sector e-commerce. Los ejemplos de codigo son genericos e inventados, inspirados en patrones reales de la industria. Ningun codigo pertenece a un sistema real.
 >
-> El objetivo es identificar, documentar y aprender a **estrangular** cada antipatrón con ejemplos inventados inspirados en la realidad.
+> El objetivo es identificar, documentar y aprender a **estrangular** cada antipatron con ejemplos illustrativos.
 
 ---
 
@@ -114,9 +114,9 @@
 **Descripción:** Una clase que hace demasiadas cosas, violando el Principio de Responsabilidad Única (SRP).
 
 **Evidencia:**
-- Archivo PHP de **26,311 líneas** en una sola clase
+- Archivo PHP de **10,000+ líneas** en una sola clase
 - Gestiona: planning, reservas, facturación, clientes, participantes, limpieza, mantenimiento, cerraduras, presupuestos, emails, checkin, parte de viajeros, fusión de clientes, operadores, etc.
-- **288 acciones** diferentes en un único switch
+- **100+ acciones** diferentes en un único switch
 
 **Impacto:**
 - Imposible de testear unitariamente
@@ -138,7 +138,7 @@
 **Descripción:** Un método que contiene lógica excesiva y demasiadas responsabilidades.
 
 **Evidencia:**
-- Método `Ejecutar()` con un **switch de 288 casos**
+- Método `executeAction()` con un **switch de 100+ casos**
 - Cada caso delega a un método diferente, pero el switch en sí es un punto de acoplamiento masivo
 - Queries SQL de 60+ líneas dentro de métodos
 
@@ -155,7 +155,7 @@
 **Descripción:** Uso de herencia para reutilizar código en lugar de para modelar relaciones "es-un".
 
 **Evidencia:**
-- La clase extiende de `TExpAbstract`
+- La clase extiende de `BaseManager`
 - Hereda métodos como `comprobarAutenticacion()`, `setValoresPost()`, `getResultFromSelectSQL()`
 - La herencia se usa como mecanismo de inyección de dependencias implícita
 
@@ -236,11 +236,11 @@ include_once dirname(__FILE__)."/../../../../lib/u_globales.php";
 $this->ruta_raiz='/../../../../';
 
 // Nombres de bases de datos
-FROM ruralgest30.datos_reserva_habitacion
-FROM screngine.chk_reserva
+FROM tienda_db.datos_reserva_habitacion
+FROM servicios_db.chk_reserva
 
 // IDs hardcodeados
-$this->id_elemento=579314;
+$this->id_elemento=12345;
 ```
 
 **Impacto:**
@@ -342,9 +342,9 @@ $this->id_elemento=579314;
 **Evidencia:**
 ```php
 // Las dependencias se instancian usando propiedades del objeto
-$this->Moneda = new TMoneda(['id_elemento' => $this->id_elemento, 'tipo_elemento' => 1]);
-$Licencias = new TLicencias(['id_elemento' => $this->id_elemento, 'tipo_elemento' => 1]);
-$CasaNew = new TCasaNew(['id_casa' => $this->id_elemento]);
+$this->Pricing = new PricingService(['store_id' => $this->storeId, 'type' => 1]);
+$Shipping = new ShippingService(['store_id' => $this->storeId, 'type' => 1]);
+$Catalog = new ProductCatalog(['store_id' => $this->storeId]);
 ```
 
 **Impacto:**
@@ -377,7 +377,7 @@ $CasaNew = new TCasaNew(['id_casa' => $this->id_elemento]);
 
 **Evidencia:**
 - Cada clase instancia sus propias dependencias internamente
-- Cadenas: `TCloudV2_TCloudDisponibilidad` → `TCasaNew` → `TMoneda` → `TLicencias` → ...
+- Cadenas: `OrderManager` → `ProductCatalog` → `PricingService` → `ShippingService` → ...
 
 ---
 
@@ -529,9 +529,9 @@ if($this->ValoresPost_JSON_obj->request->ver_mantenimiento==1){
 
 **Evidencia:**
 ```php
-$QAux = "SELECT * FROM ruralgest30.casa AS c WHERE c.id_casa=$this->id_elemento";
+$QAux = "SELECT * FROM tienda_db.casa AS c WHERE c.id_casa=$this->id_elemento";
 
-$QAux = "SELECT * FROM ruralgest30.ofe_ofertas
+$QAux = "SELECT * FROM tienda_db.ofe_ofertas
          WHERE id_casa=$this->id_elemento
          AND fecha BETWEEN '$this->fecha_inicio' AND '$this->fecha_fin'";
 ```
@@ -590,8 +590,8 @@ try {
 
 // Mismo patrón repetido para cerraduras, contadores, chekin:
 try {
-    $mrkey = new TMrKey(array());
-    $cerraduras = $mrkey->getArrayLocks(...);
+    $locks = new LockService(array());
+    $locks->getArrayLocks(...);
 } catch (Exception $e) {
     // Silencio absoluto
 }
@@ -671,7 +671,7 @@ if(true||count((array) $conceptos)==0) { ... }
 **Evidencia:**
 - Métodos: `mostrarPlanning`, `getReservas`, `cargarAlojamiento`, `setPlantilla`
 - Variables: `$fecha_inicio`, `$width_planning`, `$n_dias_max`, `$vista_hotel`
-- Clases: `TCloudV2_TCloudDisponibilidad`, `TCasaNew`, `TLimpieza2`
+- Clases: `OrderManager_v2`, `ProductCatalogNew`, `ShippingService2`
 
 ---
 
@@ -683,7 +683,7 @@ if(true||count((array) $conceptos)==0) { ... }
 
 **Evidencia:**
 ```php
-$this->id_elemento = 579314;
+$this->id_elemento = 12345;
 $this->tipo_elemento = 1;
 $AccionesSinHash = 9000;
 $n_dias_max = 36;
@@ -826,7 +826,7 @@ WHERE drh.tipo = 5    -- 5 = desayuno
 WHERE drh.tipo = 6    -- 6 = media pensión
 WHERE drh.tipo = 7    -- 7 = pensión completa
 
--- Columna `chk_tipo` en screngine.chk_reserva:
+-- Columna `chk_tipo` en servicios_db.chk_reserva:
 chk_tipo = 2    -- marca de "vista"
 chk_tipo = 3    -- estado checkin
 chk_tipo = 4    -- estado checkout
@@ -850,20 +850,20 @@ chk_tipo = 7    -- check adicional
 
 **Evidencia:**
 ```sql
-FROM ruralgest30.datos_reserva_habitacion drh
-INNER JOIN ruralgest30.reserva r USING(id_casa,id_reserva)
-INNER JOIN ruralgest30.reserva_particular ro ON (...)
-LEFT JOIN screngine.cmp_comportamiento AS cmp USING (id_comportamiento)
-LEFT JOIN screngine.chk_reserva chk ON (...)
-LEFT JOIN experiencias.exp_textos AS t1 ON (...)
+FROM tienda_db.datos_reserva_habitacion drh
+INNER JOIN tienda_db.reserva r USING(id_casa,id_reserva)
+INNER JOIN tienda_db.reserva_particular ro ON (...)
+LEFT JOIN servicios_db.cmp_comportamiento AS cmp USING (id_comportamiento)
+LEFT JOIN servicios_db.chk_reserva chk ON (...)
+LEFT JOIN extras_db.exp_textos AS t1 ON (...)
 ```
 
 **Esquemas involucrados:**
 | Esquema | Propósito |
 |---|---|
-| `ruralgest30` | Sistema legacy de reservas |
-| `screngine` | Motor de servicios, checkins, facturación |
-| `experiencias` | Módulo de experiencias/extras |
+| `tienda_db` | Sistema legacy de reservas |
+| `servicios_db` | Motor de servicios, checkins, facturación |
+| `extras_db` | Módulo de extras_db/extras |
 
 **Impacto:**
 - Migrar un esquema requiere reescribir todas las queries
@@ -899,7 +899,7 @@ Cada query debe hacer UNION o branching.
 **Descripción:** El mismo concepto tiene nombres diferentes según el esquema.
 
 **Evidencia:**
-| Concepto | `ruralgest30` | `screngine` |
+| Concepto | `tienda_db` | `servicios_db` |
 |---|---|---|
 | ID alojamiento | `id_casa` | `id_elemento` |
 | ID reserva | `id_reserva_original` | `id_reserva` |
@@ -1027,9 +1027,9 @@ Inconsistencia: algunos usan 0=activo, otros 1=activo.
 
 **Evidencia:**
 ```sql
-WHERE fecha_fin_planning >= '2021-11-01'
-WHERE id_elemento IN (1554, 571136, 574465)
-WHERE id_elemento != 574465
+WHERE fecha_fin_planning >= '2020-01-01'
+WHERE id_elemento IN (100, 200, 300)
+WHERE id_elemento != 300
 ```
 
 ---
@@ -1038,7 +1038,7 @@ WHERE id_elemento != 574465
 
 **Severidad:** 🟠 Alto
 
-**Descripción:** `tipo_elemento` usado como discriminador polimórfico en casi todas las tablas de `screngine`.
+**Descripción:** `tipo_elemento` usado como discriminador polimórfico en casi todas las tablas de `servicios_db`.
 
 **Evidencia:**
 ```sql
@@ -1304,7 +1304,7 @@ mostrarPlanning()        // español + inglés
 getReservas()            // inglés + español
 cargarAlojamiento()      // español puro
 setPlantilla()           // español
-TCD_MultiPlaning_GetMultiPlaning()  // prefix + inglés mal escrito
+TCD_GetOrderList_GetOrderList()  // prefix + ingles mal escrito
 ```
 
 **Variables:**
@@ -1317,9 +1317,9 @@ $multiplaning            // inglés (mal escrito, falta 'n')
 
 **Clases:**
 ```
-TCloudV2_TCloudDisponibilidad    // inglés
-TCasaNew                         // español + inglés
-TLimpieza2                       // español + número
+OrderManager_v2_ProductList    // ingles
+ProductCatalogNew              // ingles + ingles
+ShippingService2               // ingles + numero
 ```
 
 **Impacto:**
@@ -1334,12 +1334,12 @@ TLimpieza2                       // español + número
 
 **Evidencia:**
 ```
-TCloudV2_     // módulo + versión
-TCD_          // acrónimo (TCloudDisponibilidad)
+OrderManager_v2_     // modulo + version
+TCD_          // acronimo (TotalCustomerData)
 TMr           // "Mister" (de MisterPlan)
 TExp          // "Experiencia"
-TCasa         // sin prefijo claro
-TLimpieza2    // nombre + número de versión
+ProductCatalog         // sin prefijo claro
+ShippingService2    // nombre + numero de version
 ```
 
 La `T` inicial parece ser convención de "Tipo/Clase" pero no se aplica consistentemente.
@@ -1402,14 +1402,14 @@ La `n_` prefix se usa inconsistentemente — a veces sí, a veces no.
 
 **Evidencia:**
 ```
-ruralgest30.casa              → "casa" (español)
-screngine.cfg_configuracion   → "configuracion" con prefijo "cfg_"
-ruralgest30.reserva_operador  → sin prefijo
-screngine.chk_reserva         → con prefijo "chk_"
-screngine.fac_factura         → con prefijo "fac_"
-screngine.pdif_pago_diferido  → con prefijo "pdif_"
-ruralgest30.ofe_ofertas       → con prefijo "ofe_"
-screngine.par_participante    → con prefijo "par_"
+tienda_db.casa              → "casa" (español)
+servicios_db.cfg_configuracion   → "configuracion" con prefijo "cfg_"
+tienda_db.reserva_operador  → sin prefijo
+servicios_db.chk_reserva         → con prefijo "chk_"
+servicios_db.fac_factura         → con prefijo "fac_"
+servicios_db.pdif_pago_diferido  → con prefijo "pdif_"
+tienda_db.ofe_ofertas       → con prefijo "ofe_"
+servicios_db.par_participante    → con prefijo "par_"
 ```
 
 Algunas tablas tienen prefijo de módulo, otras no. No hay patrón consistente.
@@ -1514,7 +1514,7 @@ Indicativo de documentación descuidada.
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        GOD CLASS                                │
-│                    (26,311 líneas)                              │
+│                    (10,000+ líneas)                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │

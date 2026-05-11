@@ -2,7 +2,7 @@
 
 ## El problema
 
-Una clase que hace **demasiadas cosas**, violando el Principio de Responsabilidad Unica (SRP). En el sistema real, una sola clase PHP gestionaba: catalogo de productos, carrito de compra, pedidos, calculo de precios, gestion de clientes, inventario, envios, devoluciones, notificaciones, analytics, y renderizado HTML.
+Una clase que hace **demasiadas cosas**, violando el Principio de Responsabilidad Unica (SRP). Es comun encontrar en codebases legacy una sola clase PHP que gestiona: catalogo de productos, carrito de compra, pedidos, calculo de precios, gestion de clientes, inventario, envios, devoluciones, notificaciones, analytics, y renderizado HTML.
 
 ## Antipatrones identificados
 
