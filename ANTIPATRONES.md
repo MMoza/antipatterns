@@ -115,7 +115,7 @@
 
 **Evidencia:**
 - Archivo PHP de **10,000+ líneas** en una sola clase
-- Gestiona: planning, reservas, facturación, clientes, participantes, limpieza, mantenimiento, cerraduras, presupuestos, emails, checkin, parte de viajeros, fusión de clientes, operadores, etc.
+- Gestiona: catalogo de productos, carrito de compra, pedidos, facturacion, clientes, inventario, envios, devoluciones, cupones, emails, fusion de cuentas, operadores, analytics, y renderizado HTML.
 - **100+ acciones** diferentes en un único switch
 
 **Impacto:**
@@ -125,7 +125,7 @@
 - Merge conflicts constantes en equipo
 
 **Cómo estrangularlo:**
-- Identificar bounded contexts (Reservas, Facturación, Clientes, etc.)
+- Identificar bounded contexts (Pedidos, Facturacion, Clientes, etc.)
 - Extraer cada contexto a su propio servicio/controller
 - Usar Facade para mantener compatibilidad durante la transición
 
@@ -173,8 +173,8 @@
 
 **Evidencia:**
 - El constructor instancia múltiples dependencias internas
-- Llama a `parent::__construct()` que a su vez hace `setValoresPost()`
-- `setValoresPost()` carga alojamiento, configura fechas, calcula días máximos, etc.
+- Llama a `parent::__construct()` que a su vez hace `cargarConfiguracion()`
+- `cargarConfiguracion()` carga la tienda, configura fechas, calcula limites, etc.
 - IDs hardcodeados en el constructor
 
 **Impacto:**
@@ -236,8 +236,8 @@ include_once dirname(__FILE__)."/../../../../lib/u_globales.php";
 $this->ruta_raiz='/../../../../';
 
 // Nombres de bases de datos
-FROM tienda_db.datos_reserva_habitacion
-FROM servicios_db.chk_reserva
+FROM tienda_db.order_items
+FROM servicios_db.order_checks
 
 // IDs hardcodeados
 $this->id_elemento=12345;
@@ -271,9 +271,9 @@ $this->id_elemento=12345;
 **Descripción:** Estado mutable compartido entre métodos que se modifica de forma implícita.
 
 **Evidencia:**
-- Propiedades como `$this->id_elemento`, `$this->fecha_inicio`, `$this->alojamiento` se leen y escriben por decenas de métodos
-- `$this->ValoresPost_JSON_obj` se modifica en `setValoresPost()` y se lee en todos los métodos
-- `$this->Plantilla` se crea en `setPlantilla()` y se usa en todos los métodos que renderizan
+- Propiedades como `$this->id_elemento`, `$this->fecha_inicio`, `$this->storeConfig` se leen y escriben por decenas de metodos
+- `$this->ValoresPost_JSON_obj` se modifica en `cargarConfiguracion()` y se lee en todos los metodos
+- `$this->Plantilla` se crea en `setPlantilla()` y se usa en todos los metodos que renderizan
 
 **Impacto:**
 - Orden de llamadas importa (acoplamiento temporal)
@@ -294,9 +294,9 @@ $this->id_elemento=12345;
 **Descripción:** Un cambio en un lugar causa efectos en otro lugar no obvio.
 
 **Evidencia:**
-- `setValoresPost()` modifica `$this->n_dias_max` que afecta a `mostrarPlanning()`
-- `cargarAlojamiento()` setea `$this->soloCloud` que se usa en queries de `getReservas()`
-- `setPlantilla()` asigna variables al template que se usan en HTML que se envía al JS
+- `cargarConfiguracion()` modifica `$this->maxItems` que afecta a `mostrarCatalogo()`
+- `cargarTienda()` setea `$this->soloOnline` que se usa en queries de `getPedidos()`
+- `setPlantilla()` asigna variables al template que se usan en HTML que se envia al JS
 
 **Impacto:**
 - Bugs difíciles de rastrear
@@ -311,9 +311,9 @@ $this->id_elemento=12345;
 **Descripción:** Los métodos deben llamarse en un orden específico pero no hay forma de saberlo.
 
 **Evidencia:**
-- Debes llamar a `cargarAlojamiento()` antes de cualquier método que use `$this->alojamiento`
-- `setPlantilla()` debe llamarse antes de cualquier método que use `$this->Plantilla`
-- `setValoresPost()` debe ejecutarse antes de leer cualquier `$this->ValoresPost_JSON_obj->request->*`
+- Debes llamar a `cargarTienda()` antes de cualquier metodo que use `$this->storeConfig`
+- `setPlantilla()` debe llamarse antes de cualquier metodo que use `$this->Plantilla`
+- `cargarConfiguracion()` debe ejecutarse antes de leer cualquier `$this->ValoresPost_JSON_obj->request->*`
 
 **Impacto:**
 - La clase solo funciona si se usa en el orden "correcto"
@@ -360,8 +360,8 @@ $Catalog = new ProductCatalog(['store_id' => $this->storeId]);
 **Descripción:** Métodos que parecen de consulta pero modifican estado.
 
 **Evidencia:**
-- `getReservas()` puede hacer UPDATE para asignar colores aleatorios a reservas
-- Métodos `verX()` que supuestamente solo muestran, pero pueden triggerar cálculos
+- `getPedidos()` puede hacer UPDATE para asignar colores aleatorios a pedidos
+- Metodos `verX()` que supuestamente solo muestran, pero pueden triggerar calculos
 
 **Impacto:**
 - Violación de Command-Query Separation (CQS)
@@ -403,7 +403,7 @@ $Catalog = new ProductCatalog(['store_id' => $this->storeId]);
 **Descripción:** Uso de tipos primitivos (int, string, bool) para representar conceptos de dominio.
 
 **Evidencia:**
-- IDs como `int` en lugar de `ReservaId`, `HabitacionId`, `CasaId`
+- IDs como `int` en lugar de `OrderId`, `ProductId`, `StoreId`
 - Fechas como `string` ("Y-m-d") en lugar de objetos `DateTime` o value objects
 - Estados como `int` (0, 1, 2) en lugar de enums
 - Precios como `float` en lugar de `Money`
@@ -423,11 +423,11 @@ $Catalog = new ProductCatalog(['store_id' => $this->storeId]);
 
 **Evidencia:**
 ```php
-$resulta['reservas'][$r->id_reserva]['datos'] = new stdClass();
-$resulta['reservas'][$r->id_reserva]['p'][] = $r;
-$resulta['reservas'][$r->id_reserva]['d'][$r->id_habitacion_base][$r->fecha] = $r;
+$resulta['pedidos'][$r->id_pedido]['datos'] = new stdClass();
+$resulta['pedidos'][$r->id_pedido]['items'][] = $r;
+$resulta['pedidos'][$r->id_pedido]['lineas'][$r->id_producto_base][$r->fecha] = $r;
 ```
-- Arrays multidimensionales con claves mágicas: `'datos'`, `'p'`, `'d'`, `'drh'`
+- Arrays multidimensionales con claves magicas: `'datos'`, `'items'`, `'lineas'`, `'drh'`
 
 **Impacto:**
 - Sin validación de estructura
@@ -444,7 +444,7 @@ $resulta['reservas'][$r->id_reserva]['d'][$r->id_habitacion_base][$r->fecha] = $
 
 **Evidencia:**
 ```php
-$this->alojamiento = new stdClass();
+$this->storeConfig = new stdClass();
 $temp = new stdClass();
 $temp->dia = date('d', strtotime($fecha));
 $return = new stdClass();
@@ -492,12 +492,12 @@ $return->resultado = $resulta;
 
 **Evidencia:**
 ```php
-private $multiplaning=0;
-private $vista_hotel=0;
-private $facturacion_casa=0;
+private $multicatalog=0;
+private $vista_tienda=0;
+private $facturacion_directa=0;
 
-if($this->ValoresPost_JSON_obj->request->ver_limpieza==1){
-if($this->ValoresPost_JSON_obj->request->ver_mantenimiento==1){
+if($this->ValoresPost_JSON_obj->request->ver_envios==1){
+if($this->ValoresPost_JSON_obj->request->ver_devoluciones==1){
 ```
 
 **Impacto:**
@@ -513,9 +513,9 @@ if($this->ValoresPost_JSON_obj->request->ver_mantenimiento==1){
 **Descripción:** Grupos de datos que siempre viajan juntos pero no están encapsulados.
 
 **Evidencia:**
-- `$id_habitacion`, `$id_habitacion_base`, `$fecha` aparecen juntos en decenas de métodos
+- `$id_producto`, `$id_producto_base`, `$fecha` aparecen juntos en decenas de metodos
 - `id_elemento`, `tipo_elemento` siempre juntos
-- `fecha_inicio`, `fecha_fin`, `n_dias_max` como grupo
+- `fecha_inicio`, `fecha_fin`, `max_items` como grupo
 
 ---
 
@@ -529,10 +529,10 @@ if($this->ValoresPost_JSON_obj->request->ver_mantenimiento==1){
 
 **Evidencia:**
 ```php
-$QAux = "SELECT * FROM tienda_db.casa AS c WHERE c.id_casa=$this->id_elemento";
+$QAux = "SELECT * FROM tienda_db.products AS p WHERE p.store_id=$this->id_elemento";
 
-$QAux = "SELECT * FROM tienda_db.ofe_ofertas
-         WHERE id_casa=$this->id_elemento
+$QAux = "SELECT * FROM tienda_db.ofertas
+         WHERE store_id=$this->id_elemento
          AND fecha BETWEEN '$this->fecha_inicio' AND '$this->fecha_fin'";
 ```
 
@@ -583,12 +583,12 @@ $QAux = "SELECT * FROM tienda_db.ofe_ofertas
 **Evidencia:**
 ```php
 try {
-    $this->reserva_operador = $this->obtenerReservaOperador($this->id_reserva);
+    $this->order_operator = $this->obtenerOrderOperator($this->id_pedido);
 } catch(Exception $ex) {
-    // Nada - la excepción se silencia
+    // Nada - la excepcion se silencia
 }
 
-// Mismo patrón repetido para cerraduras, contadores, chekin:
+// Mismo patron repetido para locks, contadores, tracking:
 try {
     $locks = new LockService(array());
     $locks->getArrayLocks(...);
@@ -645,8 +645,8 @@ try {
 
 **Evidencia:**
 ```php
-// Bloque SQL de 30 líneas comentado con "YA NO SE USA RESERVA_PARTICULAR"
-/* ---- YA NO SE USA RESERVA_PARTICULAR ... */
+// Bloque SQL de 30 lineas comentado con "YA NO SE USA ORDER_PARTICULAR"
+/* ---- YA NO SE USA ORDER_PARTICULAR ... */
 
 if (false && $this->ModulosLicencia[32]) { ... }
 
@@ -669,8 +669,8 @@ if(true||count((array) $conceptos)==0) { ... }
 **Descripción:** Mezcla de idiomas (español, inglés, spanglish) en nombres de variables, métodos y clases.
 
 **Evidencia:**
-- Métodos: `mostrarPlanning`, `getReservas`, `cargarAlojamiento`, `setPlantilla`
-- Variables: `$fecha_inicio`, `$width_planning`, `$n_dias_max`, `$vista_hotel`
+- Metodos: `mostrarCatalogo`, `getPedidos`, `cargarTienda`, `setPlantilla`
+- Variables: `$fecha_inicio`, `$width_catalog`, `$max_items`, `$vista_tienda`
 - Clases: `OrderManager_v2`, `ProductCatalogNew`, `ShippingService2`
 
 ---
@@ -686,9 +686,9 @@ if(true||count((array) $conceptos)==0) { ... }
 $this->id_elemento = 12345;
 $this->tipo_elemento = 1;
 $AccionesSinHash = 9000;
-$n_dias_max = 36;
-$this->width_planning -= 30;
-($this->width_planning * 0.90)
+$max_items = 36;
+$this->width_catalog -= 30;
+($this->width_catalog * 0.90)
 ```
 
 ---
@@ -700,8 +700,8 @@ $this->width_planning -= 30;
 **Descripción:** Código duplicado en múltiples lugares.
 
 **Evidencia:**
-- `getReservas()` y `getReservas_VistaSemanal()` con lógica casi idéntica
-- Bloques de limpieza/mantenimiento duplicados
+- `getPedidos()` y `getPedidos_VistaMensual()` con logica casi identica
+- Bloques de envios/devoluciones duplicados
 - Lógica de precios duplicada para diferentes modos
 
 ---
@@ -732,7 +732,7 @@ $this->setPlantilla();
 $this->Plantilla->assign('dias', $dias);
 // ... lógica de negocio intercalada con asignaciones de template ...
 return utf8_encode_Int($this->IdiomaInterfaz->traducirTPL(
-    $this->Plantilla->fetch('modulos/.../planning.html')
+    $this->Plantilla->fetch('modulos/.../catalogo.html')
 ));
 ```
 
@@ -764,10 +764,10 @@ return utf8_encode_Int($this->IdiomaInterfaz->traducirTPL(
 **Evidencia:**
 ```php
 switch ($this->ValoresPost_JSON_obj->request->accion) {
-    case 1:   $resulta = $this->mostrarPlanning(); break;
-    case 2:   $resulta = $this->getReservas(); break;
-    case 3:   $resulta = $this->obtenerDatosReserva(); break;
-    // ... hasta case 288
+    case 1:   $resulta = $this->mostrarCatalogo(); break;
+    case 2:   $resulta = $this->getPedidos(); break;
+    case 3:   $resulta = $this->obtenerDatosPedido(); break;
+    // ... hasta case 100
 }
 ```
 
@@ -791,8 +791,8 @@ switch ($this->ValoresPost_JSON_obj->request->accion) {
 **Evidencia:**
 ```php
 // PHP
-$retorno['planning'] = utf8_encode_Int($this->IdiomaInterfaz->traducirTPL(
-    $this->Plantilla->fetch('modulos/.../planning.html')
+$retorno['catalogo'] = utf8_encode_Int($this->IdiomaInterfaz->traducirTPL(
+    $this->Plantilla->fetch('modulos/.../catalogo.html')
 ));
 
 // JS
@@ -816,22 +816,22 @@ elem.innerHTML = Datos.response.resultado;
 
 **Evidencia:**
 ```sql
--- Columna `tipo` en datos_reserva_habitacion:
-WHERE drh.tipo = 0    -- 0 = habitación/reserva
-WHERE drh.tipo = 1    -- 1 = bloqueo
-WHERE drh.tipo = 2    -- 2 = servicios del día
-WHERE drh.tipo = 3    -- 3 = servicios extraordinarios
-WHERE drh.tipo = 4    -- 4 = extras
-WHERE drh.tipo = 5    -- 5 = desayuno
-WHERE drh.tipo = 6    -- 6 = media pensión
-WHERE drh.tipo = 7    -- 7 = pensión completa
+-- Columna `tipo` en order_items:
+WHERE oi.tipo = 0    -- 0 = producto/pedido
+WHERE oi.tipo = 1    -- 1 = bloqueo de stock
+WHERE oi.tipo = 2    -- 2 = servicios del dia
+WHERE oi.tipo = 3    -- 3 = servicios extraordinarios
+WHERE oi.tipo = 4    -- 4 = extras
+WHERE oi.tipo = 5    -- 5 = envio estandar
+WHERE oi.tipo = 6    -- 6 = envio express
+WHERE oi.tipo = 7    -- 7 = envio urgente
 
--- Columna `chk_tipo` en servicios_db.chk_reserva:
+-- Columna `chk_tipo` en servicios_db.order_checks:
 chk_tipo = 2    -- marca de "vista"
-chk_tipo = 3    -- estado checkin
-chk_tipo = 4    -- estado checkout
-chk_tipo = 5    -- estado bloqueo
-chk_tipo = 6    -- estado facturada
+chk_tipo = 3    -- estado processing
+chk_tipo = 4    -- estado shipped
+chk_tipo = 5    -- estado blocked
+chk_tipo = 6    -- estado invoiced
 chk_tipo = 7    -- check adicional
 ```
 
@@ -850,20 +850,20 @@ chk_tipo = 7    -- check adicional
 
 **Evidencia:**
 ```sql
-FROM tienda_db.datos_reserva_habitacion drh
-INNER JOIN tienda_db.reserva r USING(id_casa,id_reserva)
-INNER JOIN tienda_db.reserva_particular ro ON (...)
+FROM tienda_db.order_items oi
+INNER JOIN tienda_db.orders o USING(store_id,id_pedido)
+INNER JOIN tienda_db.order_b2c ob ON (...)
 LEFT JOIN servicios_db.cmp_comportamiento AS cmp USING (id_comportamiento)
-LEFT JOIN servicios_db.chk_reserva chk ON (...)
+LEFT JOIN servicios_db.order_checks chk ON (...)
 LEFT JOIN extras_db.exp_textos AS t1 ON (...)
 ```
 
 **Esquemas involucrados:**
-| Esquema | Propósito |
+| Esquema | Proposito |
 |---|---|
-| `tienda_db` | Sistema legacy de reservas |
-| `servicios_db` | Motor de servicios, checkins, facturación |
-| `extras_db` | Módulo de extras_db/extras |
+| `tienda_db` | Sistema legacy de pedidos |
+| `servicios_db` | Motor de servicios, tracking, facturacion |
+| `extras_db` | Modulo de extras/promociones |
 
 **Impacto:**
 - Migrar un esquema requiere reescribir todas las queries
@@ -875,13 +875,13 @@ LEFT JOIN extras_db.exp_textos AS t1 ON (...)
 
 **Severidad:** 🟠 Alto
 
-**Descripción:** Dos sistemas paralelos de reservas con estructuras casi idénticas.
+**Descripcion:** Dos sistemas paralelos de pedidos con estructuras casi identicas.
 
 **Evidencia:**
-| Sistema Operador | Sistema Particular |
+| Sistema B2B | Sistema B2C |
 |---|---|
-| `reserva_operador` (~130 cols) | `reserva_particular` (~70 cols) |
-| `conceptos_operador` | `reserva_particular_conceptos` |
+| `order_b2b` (~130 cols) | `order_b2c` (~70 cols) |
+| `conceptos_b2b` | `order_b2c_conceptos` |
 
 Cada query debe hacer UNION o branching.
 
@@ -901,8 +901,8 @@ Cada query debe hacer UNION o branching.
 **Evidencia:**
 | Concepto | `tienda_db` | `servicios_db` |
 |---|---|---|
-| ID alojamiento | `id_casa` | `id_elemento` |
-| ID reserva | `id_reserva_original` | `id_reserva` |
+| ID tienda | `store_id` | `id_elemento` |
+| ID pedido | `id_pedido_original` | `id_pedido` |
 | Tipo de elemento | N/A | `tipo_elemento` |
 | Tipo de check | N/A | `chk_tipo` |
 
@@ -917,10 +917,10 @@ Cada query debe hacer UNION o branching.
 **Severidad:** 🟡 Medio
 
 **Evidencia:**
-- `id_reserva` vs `id_reserva_original` — doble join necesario en cada lookup
-- `cliente` vs `cliente_copia` — datos duplicados al momento de reservar
-- `id_casa` aparece en casi TODAS las tablas como foreign key redundante
-- `fecha` vs `fecha_habitacion` — semántica solapada
+- `id_pedido` vs `id_pedido_original` — doble join necesario en cada lookup
+- `customer` vs `customer_copy` — datos duplicados al momento de ordenar
+- `store_id` aparece en casi TODAS las tablas como foreign key redundante
+- `fecha` vs `fecha_pedido` — semantica solapada
 
 ---
 
@@ -930,10 +930,10 @@ Cada query debe hacer UNION o branching.
 
 **Evidencia:**
 ```
-par_participante.datos_extra          → JSON participant data
+order_b2c.customer_data          → JSON customer data
 fac_factura.extra                     → JSON invoice extras (con stripslashes!)
 fac_config_elemento.data              → JSON e-invoicing config
-reserva_operador.cod_aplicado         → pipe-delimited: "tipo|valor"
+order_b2b.applied_code         → pipe-delimited: "tipo|valor"
 lic_elementos.extra                   → JSON view config
 ```
 
@@ -949,9 +949,9 @@ lic_elementos.extra                   → JSON view config
 
 **Evidencia:**
 ```php
-// INSERT uno a uno por noche en lugar de bulk INSERT
-foreach ($noches as $noche) {
-    $QAux = "INSERT INTO datos_reserva_habitacion (...) VALUES (...)";
+// INSERT uno a uno por linea de pedido en lugar de bulk INSERT
+foreach ($lineas as $linea) {
+    $QAux = "INSERT INTO order_items (...) VALUES (...)";
     $this->executeSQL($QAux);
 }
 ```
@@ -972,7 +972,7 @@ foreach ($noches as $noche) {
 
 **Evidencia:**
 - `SELECT * ... LIMIT 10000` + filtrado en PHP — sin FULLTEXT index
-- `LIKE '%-$id_habitacion_base'` — wildcard inicial impide uso de índices
+- `LIKE '%-$id_producto_base'` — wildcard inicial impide uso de indices
 - `FORCE INDEX` — evidencia de que el optimizador no elige el índice correcto
 - `GROUP BY localizador` sin agregación
 
@@ -1011,11 +1011,11 @@ $this->executeSQL("SET FOREIGN_KEY_CHECKS=1;");
 
 **Evidencia:**
 ```sql
-hab_borrada = 0          -- soft delete de habitación
-hab_base_borrada = 0     -- soft delete de habitación base
-estado = 0               -- en reserva_ko = "pendiente"
-estado = 1               -- en chk_reserva = "activo"
-activo = 1               -- en ota_datoscasa_habitaciones
+product_deleted = 0          -- soft delete de producto
+product_base_deleted = 0     -- soft delete de producto base
+estado = 0               -- en order_failed = "pendiente"
+estado = 1               -- en order_checks = "activo"
+activo = 1               -- en marketplace_products
 ```
 Inconsistencia: algunos usan 0=activo, otros 1=activo.
 
@@ -1027,7 +1027,7 @@ Inconsistencia: algunos usan 0=activo, otros 1=activo.
 
 **Evidencia:**
 ```sql
-WHERE fecha_fin_planning >= '2020-01-01'
+WHERE fecha_fin_catalog >= '2020-01-01'
 WHERE id_elemento IN (100, 200, 300)
 WHERE id_elemento != 300
 ```
@@ -1042,7 +1042,7 @@ WHERE id_elemento != 300
 
 **Evidencia:**
 ```sql
-WHERE tipo_elemento = 1    -- 1 = casa/alojamiento
+WHERE tipo_elemento = 1    -- 1 = store/tienda
 -- ¿Qué es 2? ¿3? ¿4?
 ```
 
@@ -1058,7 +1058,7 @@ WHERE tipo_elemento = 1    -- 1 = casa/alojamiento
 
 **Evidencia:**
 ```sql
-WHERE concepto LIKE '%-$id_habitacion_base'
+WHERE concepto LIKE '%-$id_producto_base'
 WHERE nombre_completo LIKE '%$name%'
 WHERE concepto NOT LIKE 'pendiente_%'
 ```
@@ -1070,25 +1070,25 @@ Wildcards iniciales = full table scan inevitable.
 
 **Severidad:** 🔴 Crítico
 
-`reserva_operador`: **~130 columnas**
-`reserva_particular`: **~70 columnas**
+`order_b2b`: **~130 columnas**
+`order_b2c`: **~70 columnas**
 
 Tablas tan anchas que son imposibles de entender de un vistazo. Mezclan:
-- Datos de la reserva
-- Datos del cliente (duplicados de tabla `cliente`)
-- Configuración de emails
-- Configuración de facturas
-- Configuración de comisiones
+- Datos del pedido
+- Datos del cliente (duplicados de tabla `customer`)
+- Configuracion de emails
+- Configuracion de facturas
+- Configuracion de comisiones
 - Estado de cobros
 - Bonos
-- Códigos de agencia
+- Codigos de agencia
 
-**Cómo estrangularlo:** Extraer grupos conceptuales a tablas hijas:
-- `reserva_cliente_info`
-- `reserva_email_config`
-- `reserva_factura_config`
-- `reserva_comision`
-- `reserva_cobro_status`
+**Como estrangularlo:** Extraer grupos conceptuales a tablas hijas:
+- `order_customer_info`
+- `order_email_config`
+- `order_invoice_config`
+- `order_commission`
+- `order_payment_status`
 
 ---
 
@@ -1116,8 +1116,8 @@ comision_activa_1, ... comision_activa_7
 
 **Diseño correcto:**
 ```sql
-CREATE TABLE reserva_factura_envios (
-    id_reserva INT,
+CREATE TABLE order_invoice_shipments (
+    id_pedido INT,
     tipo_envio INT,
     email VARCHAR(255),
     fecha DATE,
@@ -1133,8 +1133,8 @@ CREATE TABLE reserva_factura_envios (
 **Severidad:** 🟠 Alto
 
 ```sql
-`precio` double,                    -- datos_reserva_habitacion
-`importe_reserva_original` double,  -- reserva_operador
+`precio` double,                    -- order_items
+`importe_pedido_original` double,  -- order_b2b
 `sobre_tarifa` double,
 `valor_fee` double,
 `comision_casa_fee` double,
@@ -1185,7 +1185,7 @@ Imposible hacer `SUM(neto)`, `WHERE neto > 100`, o validación de rango en BD.
 
 Todas las tablas usan `CHARSET=latin1`. No soporta:
 - Caracteres UTF-8
-- Nombres con caracteres especiales de turistas extranjeros
+- Nombres con caracteres especiales de clientes extranjeros
 
 Esto explica la proliferación de `utf8_encode_Int()`, `utf8_decode_Int()`, y `mb_convert_encoding()` por todo el código PHP.
 
@@ -1195,15 +1195,15 @@ Esto explica la proliferación de `utf8_encode_Int()`, `utf8_decode_Int()`, y `m
 
 **Severidad:** 🟡 Medio
 
-`datos_reserva_habitacion` tiene 9 índices para una tabla con un PK compuesto de 5 columnas:
+`order_items` tiene 9 indices para una tabla con un PK compuesto de 5 columnas:
 
 ```sql
-PRIMARY KEY (id_casa, id_habitacion, id_habitacion_base, fecha, tipo)
-KEY FK_datos_reserva_2 (id_habitacion, id_habitacion_base,id_casa)     -- redundante con PK
-KEY IX_datos_reserva_habitacion_2 (id_habitacion, id_habitacion_base,id_casa)  -- ¡duplicado!
-KEY IX_datos_reserva_habitacion_3 (id_habitacion_base)                   -- prefijo del PK
-KEY IX_datos_reserva_habitacion_4 (fecha)                                -- prefijo del PK
-KEY IX_fecha_base (id_casa, fecha, id_habitacion_base)                   -- solapado
+PRIMARY KEY (store_id, product_id, product_base_id, fecha, tipo)
+KEY FK_order_items_2 (product_id, product_base_id, store_id)     -- redundante con PK
+KEY IX_order_items_2 (product_id, product_base_id, store_id)  -- ¡duplicado!
+KEY IX_order_items_3 (product_base_id)                   -- prefijo del PK
+KEY IX_order_items_4 (fecha)                                -- prefijo del PK
+KEY IX_fecha_base (store_id, fecha, product_base_id)                   -- solapado
 ```
 
 Cada INSERT/UPDATE paga el coste de mantener 9 índices.
@@ -1214,16 +1214,16 @@ Cada INSERT/UPDATE paga el coste de mantener 9 índices.
 
 **Severidad:** 🟠 Alto
 
-| Columna | Debería referenciar | FK existe |
+| Columna | Deberia referenciar | FK existe |
 |---|---|---|
-| `reserva_operador.id_reserva_original` | `reserva.id_reserva` | ❌ |
-| `reserva_operador.id_cliente` | `cliente_copia.id_cliente` | ❌ |
-| `reserva_particular.id_reserva_original` | `reserva.id_reserva` | ❌ |
-| `reserva_particular.id_cliente` | `cliente.id_cliente` | ❌ |
-| `chk_reserva.id_reserva` | `reserva.id_reserva` | ❌ |
-| `chk_reserva.id_usuario` | `auth_usuario.id_usuario` | ❌ |
+| `order_b2b.id_pedido_original` | `orders.id_pedido` | ❌ |
+| `order_b2b.id_customer` | `customer_copy.id_customer` | ❌ |
+| `order_b2c.id_pedido_original` | `orders.id_pedido` | ❌ |
+| `order_b2c.id_customer` | `customer.id_customer` | ❌ |
+| `order_checks.id_pedido` | `orders.id_pedido` | ❌ |
+| `order_checks.id_usuario` | `auth_usuario.id_usuario` | ❌ |
 
-Solo `datos_reserva_habitacion` tiene una FK.
+Solo `order_items` tiene una FK.
 
 ---
 
@@ -1231,10 +1231,10 @@ Solo `datos_reserva_habitacion` tiene una FK.
 
 **Severidad:** 🟠 Alto
 
-3 triggers en `reserva_operador` mantienen `reserva_cache`:
-- `reserva_cache` (AFTER INSERT)
-- `reserva_cache_update` (AFTER UPDATE)
-- `reserva_cache_delete` (AFTER DELETE)
+3 triggers en `order_b2b` mantienen `order_cache`:
+- `order_cache` (AFTER INSERT)
+- `order_cache_update` (AFTER UPDATE)
+- `order_cache_delete` (AFTER DELETE)
 
 Problemas:
 - Código duplicado entre los 3 triggers (~80 líneas cada uno)
@@ -1254,12 +1254,12 @@ Problemas:
 ```
 
 Se usa para:
-- Nombre de habitación: `"Habitación Doble"`
+- Nombre de producto: `"Producto Doble"`
 - Flags de tipo: `"pendiente_confirmacion"`
-- Referencias: `"123-456"` (id_habitacion_base)
-- Servicios: `"desayuno incluido"`
+- Referencias: `"123-456"` (id_producto_base)
+- Servicios: `"envio incluido"`
 
-El PHP hace `LIKE '%-$id_habitacion_base'` y `LIKE 'pendiente_%'` sobre esta columna.
+El PHP hace `LIKE '%-$id_producto_base'` y `LIKE 'pendiente_%'` sobre esta columna.
 
 ---
 
@@ -1268,9 +1268,9 @@ El PHP hace `LIKE '%-$id_habitacion_base'` y `LIKE 'pendiente_%'` sobre esta col
 **Severidad:** 🟡 Medio
 
 ```sql
--- chk_reserva: PK de 7 columnas
-PRIMARY KEY (id_habitacion, id_habitacion_base, fecha_habitacion,
-             tipo_elemento, id_elemento, id_reserva, chk_tipo)
+-- order_checks: PK de 7 columnas
+PRIMARY KEY (product_id, product_base_id, fecha_pedido,
+             tipo_elemento, id_elemento, id_pedido, chk_tipo)
 ```
 
 PKs tan anchos que cada índice secundario los replica completamente.
@@ -1310,7 +1310,7 @@ TCD_GetOrderList_GetOrderList()  // prefix + ingles mal escrito
 **Variables:**
 ```
 $fecha_inicio            // español
-$width_planning          // inglés + inglés
+$width_catalog          // ingles + ingles
 $n_dias_max              // español abreviado
 $multiplaning            // inglés (mal escrito, falta 'n')
 ```
@@ -1352,11 +1352,11 @@ La `T` inicial parece ser convención de "Tipo/Clase" pero no se aplica consiste
 
 **Evidencia:**
 ```
-$drh     // ¿datos_reserva_habitacion? ¿derecho?
-$ro      // ¿reserva_operador? ¿rollo?
+$drh     // ¿order_item_data? ¿derecho?
+$ro      // ¿order_b2b? ¿rollo?
 $QAux    // ¿Query Auxiliary?
-$ffrr    // ¿fac_factura_rel_reserva?
-$pprr    // ¿par_participante_rel_reserva?
+$ffrr    // ¿fac_factura_rel_pedido?
+$pprr    // ¿par_participante_rel_pedido?
 $chk     // ¿check? ¿checkpoint?
 $pdif    // ¿pago_diferido?
 $llave2  // ¿llave? ¿por qué 2?
@@ -1370,13 +1370,13 @@ $llave2  // ¿llave? ¿por qué 2?
 
 **Evidencia:** Cuatro formas de nombrar métodos que "obtienen" datos:
 ```
-getX()         → getReservas(), getInitialInterface()
-obtenerX()     → obtenerDatosReserva(), obtenerReservaOperador()
+getX()         → getPedidos(), getInitialInterface()
+obtenerX()     → obtenerDatosPedido(), obtenerOrderB2B()
 verX()         → verParticipante(), verElementoEvnt()
-mostrarX()     → mostrarPlanning(), mostrarNuevaReserva()
+mostrarX()     → mostrarCatalogo(), mostrarNuevoPedido()
 ```
 
-¿Cuál es la diferencia semántica entre `getReservas()`, `obtenerDatosReserva()`, `verReservasCamping()` y `mostrarPlanning()`? **Ninguna clara.**
+Cual es la diferencia semantica entre `getPedidos()`, `obtenerDatosPedido()`, `verPedidosCamping()` y `mostrarCatalogo()`? **Ninguna clara.**
 
 ---
 
@@ -1386,7 +1386,7 @@ mostrarX()     → mostrarPlanning(), mostrarNuevaReserva()
 
 **Evidencia:**
 ```
-$id_reserva           // tipo implícito (int)
+$id_pedido           // tipo implicito (int)
 $fecha_inicio         // tipo implícito (string date)
 $n_dias_max           // la 'n' indica número
 $n_personas           // la 'n' indica número
@@ -1402,10 +1402,10 @@ La `n_` prefix se usa inconsistentemente — a veces sí, a veces no.
 
 **Evidencia:**
 ```
-tienda_db.casa              → "casa" (español)
+tienda_db.products              → "products" (ingles)
 servicios_db.cfg_configuracion   → "configuracion" con prefijo "cfg_"
-tienda_db.reserva_operador  → sin prefijo
-servicios_db.chk_reserva         → con prefijo "chk_"
+tienda_db.order_b2b  → sin prefijo
+servicios_db.chk_pedido         → con prefijo "chk_"
 servicios_db.fac_factura         → con prefijo "fac_"
 servicios_db.pdif_pago_diferido  → con prefijo "pdif_"
 tienda_db.ofe_ofertas       → con prefijo "ofe_"
@@ -1422,12 +1422,12 @@ Algunas tablas tienen prefijo de módulo, otras no. No hay patrón consistente.
 
 **Evidencia:**
 ```
-casa           → singular
-reserva        → singular
+products           → plural
+order        → singular
 ofe_ofertas    → plural
-paises_casa    → plural + singular
-datos_reserva_habitacion → singular
-conceptos_operador → plural + singular
+paises_products    → plural + plural
+datos_order_item → singular
+conceptos_b2b → plural + singular
 ```
 
 ---
@@ -1456,12 +1456,12 @@ $p              // ¿parcial? ¿periodo?
 
 **Evidencia:**
 ```
-Acción 1   = mostrarPlanning
-Acción 2   = getReservas
-Acción 3   = obtenerDatosReserva
+Accion 1   = mostrarCatalogo
+Accion 2   = getPedidos
+Accion 3   = obtenerDatosPedido
 ...
-Acción 147 = buscarReservasDeCliente
-Acción 288 = getCodigoPostalByMunicipio
+Accion 147 = buscarPedidosDeCliente
+Accion 100 = getCodigoPostalByMunicipio
 ```
 
 **Impacto:**
@@ -1477,7 +1477,7 @@ Acción 288 = getCodigoPostalByMunicipio
 
 **Evidencia:**
 ```sql
-`central_a`      -- ¿a = alojamiento?
+`central_a`      -- ¿a = article?
 `central_a_d`    -- ¿a_d = ?
 `central_mp`     -- ¿mp = media pensión?
 `central_pc`     -- ¿pc = pensión completa?
@@ -1501,7 +1501,7 @@ Ya documentado en Repeating Groups, pero merece mención específica de naming: 
 **Severidad:** 🟡 Medio
 
 ```sql
-`id_reserva_original` int COMMENT 'Relcaionado con reserva.id_reserva'
+`id_pedido_original` int COMMENT 'Relcaionado con orders.id_pedido'
 -- "Relcaionado" → "Relacionado"
 ```
 
@@ -1519,7 +1519,7 @@ Indicativo de documentación descuidada.
 │                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
 │  │ God Method   │  │ Mutable      │  │ Presentation Mixed   │  │
-│  │ (288 cases)  │──│ Shared State │──│ with Domain          │  │
+│  │ (100+ cases) │──│ Shared State │──│ with Domain          │  │
 │  └──────────────┘  └──────────────┘  └──────────────────────┘  │
 │         │                   │                      │            │
 │         ▼                   ▼                      ▼            │
