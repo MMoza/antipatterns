@@ -10,12 +10,27 @@
     },
     "autoload": {
         "psr-4": {
-            "AntiPatterns\\": "src/"
+            "AntiPatterns\\Common\\": "src/Common/",
+            "AntiPatterns\\GodClass\\": "src/01-god-class/",
+            "AntiPatterns\\StateAndCoupling\\": "src/02-state-and-coupling/",
+            "AntiPatterns\\DataModeling\\": "src/03-data-modeling/",
+            "AntiPatterns\\Security\\": "src/04-security/",
+            "AntiPatterns\\ErrorHandling\\": "src/05-error-handling/",
+            "AntiPatterns\\DatabaseDesign\\": "src/06-database-design/",
+            "AntiPatterns\\Communication\\": "src/07-communication/",
+            "AntiPatterns\\Naming\\": "src/08-naming/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\": "tests/"
+            "Tests\\GodClass\\": "tests/01-god-class/",
+            "Tests\\StateAndCoupling\\": "tests/02-state-and-coupling/",
+            "Tests\\DataModeling\\": "tests/03-data-modeling/",
+            "Tests\\Security\\": "tests/04-security/",
+            "Tests\\ErrorHandling\\": "tests/05-error-handling/",
+            "Tests\\DatabaseDesign\\": "tests/06-database-design/",
+            "Tests\\Communication\\": "tests/07-communication/",
+            "Tests\\Naming\\": "tests/08-naming/"
         }
     }
 }

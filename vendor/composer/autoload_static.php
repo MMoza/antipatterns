@@ -14,7 +14,14 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
     public static $prefixLengthsPsr4 = array (
         'T' => 
         array (
-            'Tests\\' => 6,
+            'Tests\\StateAndCoupling\\' => 23,
+            'Tests\\Security\\' => 15,
+            'Tests\\Naming\\' => 13,
+            'Tests\\GodClass\\' => 15,
+            'Tests\\ErrorHandling\\' => 20,
+            'Tests\\DatabaseDesign\\' => 21,
+            'Tests\\DataModeling\\' => 19,
+            'Tests\\Communication\\' => 20,
         ),
         'P' => 
         array (
@@ -26,14 +33,50 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
         ),
         'A' => 
         array (
-            'AntiPatterns\\' => 13,
+            'AntiPatterns\\StateAndCoupling\\' => 30,
+            'AntiPatterns\\Security\\' => 22,
+            'AntiPatterns\\Naming\\' => 20,
+            'AntiPatterns\\GodClass\\' => 22,
+            'AntiPatterns\\ErrorHandling\\' => 27,
+            'AntiPatterns\\DatabaseDesign\\' => 28,
+            'AntiPatterns\\DataModeling\\' => 26,
+            'AntiPatterns\\Communication\\' => 27,
+            'AntiPatterns\\Common\\' => 20,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'Tests\\' => 
+        'Tests\\StateAndCoupling\\' => 
         array (
-            0 => __DIR__ . '/../..' . '/tests',
+            0 => __DIR__ . '/../..' . '/tests/02-state-and-coupling',
+        ),
+        'Tests\\Security\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/04-security',
+        ),
+        'Tests\\Naming\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/08-naming',
+        ),
+        'Tests\\GodClass\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/01-god-class',
+        ),
+        'Tests\\ErrorHandling\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/05-error-handling',
+        ),
+        'Tests\\DatabaseDesign\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/06-database-design',
+        ),
+        'Tests\\DataModeling\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/03-data-modeling',
+        ),
+        'Tests\\Communication\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/07-communication',
         ),
         'PhpParser\\' => 
         array (
@@ -43,9 +86,41 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
-        'AntiPatterns\\' => 
+        'AntiPatterns\\StateAndCoupling\\' => 
         array (
-            0 => __DIR__ . '/../..' . '/src',
+            0 => __DIR__ . '/../..' . '/src/02-state-and-coupling',
+        ),
+        'AntiPatterns\\Security\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/04-security',
+        ),
+        'AntiPatterns\\Naming\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/08-naming',
+        ),
+        'AntiPatterns\\GodClass\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/01-god-class',
+        ),
+        'AntiPatterns\\ErrorHandling\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/05-error-handling',
+        ),
+        'AntiPatterns\\DatabaseDesign\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/06-database-design',
+        ),
+        'AntiPatterns\\DataModeling\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/03-data-modeling',
+        ),
+        'AntiPatterns\\Communication\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/07-communication',
+        ),
+        'AntiPatterns\\Common\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/Common',
         ),
     );
 

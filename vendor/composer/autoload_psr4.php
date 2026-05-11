@@ -6,8 +6,23 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'Tests\\' => array($baseDir . '/tests'),
+    'Tests\\StateAndCoupling\\' => array($baseDir . '/tests/02-state-and-coupling'),
+    'Tests\\Security\\' => array($baseDir . '/tests/04-security'),
+    'Tests\\Naming\\' => array($baseDir . '/tests/08-naming'),
+    'Tests\\GodClass\\' => array($baseDir . '/tests/01-god-class'),
+    'Tests\\ErrorHandling\\' => array($baseDir . '/tests/05-error-handling'),
+    'Tests\\DatabaseDesign\\' => array($baseDir . '/tests/06-database-design'),
+    'Tests\\DataModeling\\' => array($baseDir . '/tests/03-data-modeling'),
+    'Tests\\Communication\\' => array($baseDir . '/tests/07-communication'),
     'PhpParser\\' => array($vendorDir . '/nikic/php-parser/lib/PhpParser'),
     'DeepCopy\\' => array($vendorDir . '/myclabs/deep-copy/src/DeepCopy'),
-    'AntiPatterns\\' => array($baseDir . '/src'),
+    'AntiPatterns\\StateAndCoupling\\' => array($baseDir . '/src/02-state-and-coupling'),
+    'AntiPatterns\\Security\\' => array($baseDir . '/src/04-security'),
+    'AntiPatterns\\Naming\\' => array($baseDir . '/src/08-naming'),
+    'AntiPatterns\\GodClass\\' => array($baseDir . '/src/01-god-class'),
+    'AntiPatterns\\ErrorHandling\\' => array($baseDir . '/src/05-error-handling'),
+    'AntiPatterns\\DatabaseDesign\\' => array($baseDir . '/src/06-database-design'),
+    'AntiPatterns\\DataModeling\\' => array($baseDir . '/src/03-data-modeling'),
+    'AntiPatterns\\Communication\\' => array($baseDir . '/src/07-communication'),
+    'AntiPatterns\\Common\\' => array($baseDir . '/src/Common'),
 );
