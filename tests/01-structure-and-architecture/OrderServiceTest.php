@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Tests\GodClass;
+namespace Tests\StructureAndArchitecture;
 
 use AntiPatterns\Common\Database;
-use AntiPatterns\GodClass\solution\Config;
-use AntiPatterns\GodClass\solution\CreateOrderRequest;
-use AntiPatterns\GodClass\solution\CancelOrderRequest;
-use AntiPatterns\GodClass\solution\ModifyOrderRequest;
-use AntiPatterns\GodClass\solution\OrderRepository;
-use AntiPatterns\GodClass\solution\OrderService;
-use AntiPatterns\GodClass\solution\OrderStatus;
-use AntiPatterns\GodClass\solution\PricingService;
-use AntiPatterns\GodClass\solution\ShippingService;
-use AntiPatterns\GodClass\solution\ValueObjects\Money;
-use AntiPatterns\GodClass\solution\ValueObjects\OrderId;
-use AntiPatterns\GodClass\solution\ValueObjects\ProductId;
+use AntiPatterns\StructureAndArchitecture\solution\Config;
+use AntiPatterns\StructureAndArchitecture\solution\CreateOrderRequest;
+use AntiPatterns\StructureAndArchitecture\solution\CancelOrderRequest;
+use AntiPatterns\StructureAndArchitecture\solution\ModifyOrderRequest;
+use AntiPatterns\StructureAndArchitecture\solution\OrderRepository;
+use AntiPatterns\StructureAndArchitecture\solution\OrderService;
+use AntiPatterns\StructureAndArchitecture\solution\OrderStatus;
+use AntiPatterns\StructureAndArchitecture\solution\PricingService;
+use AntiPatterns\StructureAndArchitecture\solution\ShippingService;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\Money;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\OrderId;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\ProductId;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -144,7 +144,7 @@ class OrderServiceTest extends TestCase
         $result = $this->service->createOrder($request);
 
         $this->assertTrue($result->isOk());
-        $this->assertInstanceOf(\AntiPatterns\GodClass\solution\OrderCreatedResponse::class, $result->data);
+        $this->assertInstanceOf(\AntiPatterns\StructureAndArchitecture\solution\OrderCreatedResponse::class, $result->data);
         $this->assertGreaterThan(0, $result->data->orderId->value);
         $this->assertFalse($result->data->isVip);
 
@@ -319,9 +319,9 @@ class OrderServiceTest extends TestCase
     {
         $config = new Config(
             storeId: 1,
-            taxes: new \AntiPatterns\GodClass\solution\TaxConfig(general: 0.25),
-            discounts: new \AntiPatterns\GodClass\solution\DiscountConfig(bulkThreshold: 10, bulkPercentage: 0.20),
-            shipping: new \AntiPatterns\GodClass\solution\ShippingConfig(),
+            taxes: new \AntiPatterns\StructureAndArchitecture\solution\TaxConfig(general: 0.25),
+            discounts: new \AntiPatterns\StructureAndArchitecture\solution\DiscountConfig(bulkThreshold: 10, bulkPercentage: 0.20),
+            shipping: new \AntiPatterns\StructureAndArchitecture\solution\ShippingConfig(),
         );
 
         $pricing = new PricingService($config);

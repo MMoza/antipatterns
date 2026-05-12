@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AntiPatterns\GodClass\solution;
+namespace AntiPatterns\StructureAndArchitecture\solution;
 
-use AntiPatterns\GodClass\solution\ValueObjects\CustomerId;
-use AntiPatterns\GodClass\solution\ValueObjects\Money;
-use AntiPatterns\GodClass\solution\ValueObjects\OrderId;
-use AntiPatterns\GodClass\solution\ValueObjects\ProductId;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\CustomerId;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\Money;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\OrderId;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\ProductId;
 use DateTimeImmutable;
 
 /**

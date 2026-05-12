@@ -248,6 +248,6 @@ vendor/bin/phpunit tests/02-state-and-coupling/
 
 ## Antipatrones relacionados
 
-- [01 - God Class](../01-god-class/README.md)
+- [01 - God Class](../01-structure-and-architecture/README.md)
 - [03 - Data Modeling](../03-data-modeling/README.md)
 - [05 - Error Handling](../05-error-handling/README.md)

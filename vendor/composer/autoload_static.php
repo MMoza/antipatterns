@@ -14,10 +14,10 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
     public static $prefixLengthsPsr4 = array (
         'T' => 
         array (
+            'Tests\\StructureAndArchitecture\\' => 31,
             'Tests\\StateAndCoupling\\' => 23,
             'Tests\\Security\\' => 15,
             'Tests\\Naming\\' => 13,
-            'Tests\\GodClass\\' => 15,
             'Tests\\ErrorHandling\\' => 20,
             'Tests\\DatabaseDesign\\' => 21,
             'Tests\\DataModeling\\' => 19,
@@ -33,10 +33,10 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
         ),
         'A' => 
         array (
+            'AntiPatterns\\StructureAndArchitecture\\' => 38,
             'AntiPatterns\\StateAndCoupling\\' => 30,
             'AntiPatterns\\Security\\' => 22,
             'AntiPatterns\\Naming\\' => 20,
-            'AntiPatterns\\GodClass\\' => 22,
             'AntiPatterns\\ErrorHandling\\' => 27,
             'AntiPatterns\\DatabaseDesign\\' => 28,
             'AntiPatterns\\DataModeling\\' => 26,
@@ -46,6 +46,10 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
     );
 
     public static $prefixDirsPsr4 = array (
+        'Tests\\StructureAndArchitecture\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/tests/01-structure-and-architecture',
+        ),
         'Tests\\StateAndCoupling\\' => 
         array (
             0 => __DIR__ . '/../..' . '/tests/02-state-and-coupling',
@@ -57,10 +61,6 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
         'Tests\\Naming\\' => 
         array (
             0 => __DIR__ . '/../..' . '/tests/08-naming',
-        ),
-        'Tests\\GodClass\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/tests/01-god-class',
         ),
         'Tests\\ErrorHandling\\' => 
         array (
@@ -86,6 +86,10 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
+        'AntiPatterns\\StructureAndArchitecture\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/01-structure-and-architecture',
+        ),
         'AntiPatterns\\StateAndCoupling\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src/02-state-and-coupling',
@@ -97,10 +101,6 @@ class ComposerStaticInit76123a935c81e0bbe234c32f0824366b
         'AntiPatterns\\Naming\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src/08-naming',
-        ),
-        'AntiPatterns\\GodClass\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/src/01-god-class',
         ),
         'AntiPatterns\\ErrorHandling\\' => 
         array (

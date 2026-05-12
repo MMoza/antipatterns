@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\GodClass;
+namespace Tests\StructureAndArchitecture;
 
-use AntiPatterns\GodClass\solution\ValueObjects\Money;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\Money;
 use PHPUnit\Framework\TestCase;
 
 /**

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\GodClass;
+namespace Tests\StructureAndArchitecture;
 
 use AntiPatterns\Common\Database;
-use AntiPatterns\GodClass\antipattern\OrderManager;
+use AntiPatterns\StructureAndArchitecture\antipattern\OrderManager;
 use PHPUnit\Framework\TestCase;
 
 /**

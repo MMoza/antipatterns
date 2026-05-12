@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AntiPatterns\GodClass\antipattern;
+namespace AntiPatterns\StructureAndArchitecture\antipattern;
 
 use Exception;
 

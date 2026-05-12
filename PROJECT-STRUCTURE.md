@@ -33,7 +33,7 @@ anti-patterns-repo/
 │   │   ├── Database.php               # Wrapper PDO simple
 │   │   └── Config.php
 │   │
-│   ├── 01-god-class/
+│   ├── 01-structure-and-architecture/
 │   │   ├── antipattern/
 │   │   │   └── BookingManager.php
 │   │   ├── solution/
@@ -107,7 +107,7 @@ anti-patterns-repo/
 │       └── README.md
 │
 ├── tests/
-│   ├── 01-god-class/
+│   ├── 01-structure-and-architecture/
 │   │   ├── BookingManagerTest.php
 │   │   └── BookingServiceTest.php
 │   │
@@ -138,7 +138,7 @@ anti-patterns-repo/
 │       └── NamingConsistencyTest.php
 │
 └── examples/
-    ├── 01-god-class.php
+    ├── 01-structure-and-architecture.php
     ├── 02-state-and-coupling.php
     ├── 03-data-modeling.php
     ├── 04-security.php
@@ -154,7 +154,7 @@ anti-patterns-repo/
 
 | Grupo | Directorio | Antipatrones |
 |---|---|---|
-| **1. God Class** | `01-god-class/` | 1, 2, 3, 4, 5 |
+| **1. God Class** | `01-structure-and-architecture/` | 1, 2, 3, 4, 5 |
 | **2. State & Coupling** | `02-state-and-coupling/` | 9, 10, 11, 12, 13, 14, 15, 16 |
 | **3. Data Modeling** | `03-data-modeling/` | 17, 18, 19, 20, 21, 22, 23 |
 | **4. Security** | `04-security/` | 24, 25, 26 |

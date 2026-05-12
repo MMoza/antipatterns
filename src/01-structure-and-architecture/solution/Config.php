@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AntiPatterns\GodClass\solution;
+namespace AntiPatterns\StructureAndArchitecture\solution;
 
 /**
  * Config - Externalized configuration

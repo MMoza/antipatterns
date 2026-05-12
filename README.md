@@ -27,7 +27,7 @@ vendor/bin/phpunit
 ## Ejecutar Demos
 
 ```bash
-php examples/01-god-class.php
+php examples/01-structure-and-architecture.php
 ```
 
 ## Documentacion Completa

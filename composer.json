@@ -11,7 +11,7 @@
     "autoload": {
         "psr-4": {
             "AntiPatterns\\Common\\": "src/Common/",
-            "AntiPatterns\\GodClass\\": "src/01-god-class/",
+            "AntiPatterns\\StructureAndArchitecture\\": "src/01-structure-and-architecture/",
             "AntiPatterns\\StateAndCoupling\\": "src/02-state-and-coupling/",
             "AntiPatterns\\DataModeling\\": "src/03-data-modeling/",
             "AntiPatterns\\Security\\": "src/04-security/",
@@ -23,7 +23,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\GodClass\\": "tests/01-god-class/",
+            "Tests\\StructureAndArchitecture\\": "tests/01-structure-and-architecture/",
             "Tests\\StateAndCoupling\\": "tests/02-state-and-coupling/",
             "Tests\\DataModeling\\": "tests/03-data-modeling/",
             "Tests\\Security\\": "tests/04-security/",

@@ -44,17 +44,17 @@ antipatterns/
 ├── src/
 │   ├── Common/
 │   │   └── Database.php         # Wrapper PDO (SQLite en memoria)
-│   ├── GodClass/
+│   ├── StructureAndArchitecture/
 │   │   ├── antipattern/
 │   │   │   └── OrderManager.php
 │   │   ├── solution/            # Código refactorizado (vacío por ahora)
 │   │   └── README.md
 │   └── ... (más grupos)
 ├── tests/
-│   └── GodClass/
+│   └── StructureAndArchitecture/
 │       └── OrderManagerTest.php
 └── examples/
-    └── 01-god-class.php
+    └── 01-structure-and-architecture.php
 ```
 
 ## Convenciones de Código
@@ -67,7 +67,7 @@ AntiPatterns\{Group}\solution\{ClassName}
 Tests\{Group}\{ClassName}Test
 ```
 
-Ejemplo: `AntiPatterns\GodClass\antipattern\OrderManager`
+Ejemplo: `AntiPatterns\StructureAndArchitecture\antipattern\OrderManager`
 
 ### Idioma
 
@@ -149,10 +149,10 @@ vendor/bin/phpunit tests/{GroupName}/
 
 ### Archivos
 
-- `src/GodClass/antipattern/OrderManager.php` - La clase Dios
-- `tests/GodClass/OrderManagerTest.php` - 10 tests demostrando problemas
-- `src/GodClass/README.md` - Documentación
-- `examples/01-god-class.php` - Demo CLI
+- `src/StructureAndArchitecture/antipattern/OrderManager.php` - La clase Dios
+- `tests/StructureAndArchitecture/OrderManagerTest.php` - 10 tests demostrando problemas
+- `src/StructureAndArchitecture/README.md` - Documentación
+- `examples/01-structure-and-architecture.php` - Demo CLI
 
 ## Base de Datos para Tests
 
@@ -186,13 +186,13 @@ composer install
 vendor/bin/phpunit
 
 # Ejecutar tests de un grupo
-vendor/bin/phpunit tests/GodClass/
+vendor/bin/phpunit tests/StructureAndArchitecture/
 
 # Ejecutar un test específico
-vendor/bin/phpunit tests/GodClass/OrderManagerTest.php --filter=testMethodName
+vendor/bin/phpunit tests/StructureAndArchitecture/OrderManagerTest.php --filter=testMethodName
 
 # Demo CLI
-php examples/01-god-class.php
+php examples/01-structure-and-architecture.php
 
 # Regenerar autoload
 composer dump-autoload
@@ -213,7 +213,7 @@ composer dump-autoload
 
 | Grupo | Directorio | Antipatrones | Estado |
 |---|---|---|---|
-| 1. God Class | `GodClass/` | 1, 2, 3, 4, 5 | Implementado |
+| 1. God Class | `StructureAndArchitecture/` | 1, 2, 3, 4, 5 | Implementado |
 | 2. State & Coupling | `StateAndCoupling/` | 9-16 | Pendiente |
 | 3. Data Modeling | `DataModeling/` | 17-23 | Pendiente |
 | 4. Security | `Security/` | 24-26 | Pendiente |

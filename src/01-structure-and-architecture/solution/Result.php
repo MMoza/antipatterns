@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AntiPatterns\GodClass\solution;
+namespace AntiPatterns\StructureAndArchitecture\solution;
 
 /**
  * Result - Consistent return type for all service operations.

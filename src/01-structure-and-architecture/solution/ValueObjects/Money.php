@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AntiPatterns\GodClass\solution\ValueObjects;
+namespace AntiPatterns\StructureAndArchitecture\solution\ValueObjects;
 
 /**
  * Money - Value object for monetary amounts.

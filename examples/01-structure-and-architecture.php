@@ -4,14 +4,14 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use AntiPatterns\Common\Database;
-use AntiPatterns\GodClass\antipattern\OrderManager;
-use AntiPatterns\GodClass\solution\Config;
-use AntiPatterns\GodClass\solution\CreateOrderRequest;
-use AntiPatterns\GodClass\solution\OrderRepository;
-use AntiPatterns\GodClass\solution\OrderService;
-use AntiPatterns\GodClass\solution\PricingService;
-use AntiPatterns\GodClass\solution\ShippingService;
-use AntiPatterns\GodClass\solution\ValueObjects\ProductId;
+use AntiPatterns\StructureAndArchitecture\antipattern\OrderManager;
+use AntiPatterns\StructureAndArchitecture\solution\Config;
+use AntiPatterns\StructureAndArchitecture\solution\CreateOrderRequest;
+use AntiPatterns\StructureAndArchitecture\solution\OrderRepository;
+use AntiPatterns\StructureAndArchitecture\solution\OrderService;
+use AntiPatterns\StructureAndArchitecture\solution\PricingService;
+use AntiPatterns\StructureAndArchitecture\solution\ShippingService;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\ProductId;
 
 echo "=== 01 - God Class: Antes y Despues ===\n\n";
 

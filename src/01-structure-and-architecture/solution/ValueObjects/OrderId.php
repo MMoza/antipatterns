@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace AntiPatterns\GodClass\solution\ValueObjects;
+namespace AntiPatterns\StructureAndArchitecture\solution\ValueObjects;
 
 /**
- * CustomerId - Typed identifier for customers.
+ * OrderId - Typed identifier for orders.
  * Replaces raw int IDs that get confused with other entity IDs.
  */
-final readonly class CustomerId
+final readonly class OrderId
 {
     public int $value;
 
     public function __construct(int $value)
     {
         if ($value <= 0) {
-            throw new \InvalidArgumentException('CustomerId must be positive');
+            throw new \InvalidArgumentException('OrderId must be positive');
         }
         $this->value = $value;
     }

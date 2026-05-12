@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AntiPatterns\GodClass\solution;
+namespace AntiPatterns\StructureAndArchitecture\solution;
 
-use AntiPatterns\GodClass\solution\ValueObjects\Money;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\Money;
 
 /**
  * PricingService - Handles all price calculations.

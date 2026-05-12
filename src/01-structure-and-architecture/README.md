@@ -1,8 +1,8 @@
-# 01 - God Class / Clase Dios
+# 01 - Structure & Architecture / Estructura y Arquitectura
 
 ## El problema
 
-Una clase que hace **demasiadas cosas**, violando el Principio de Responsabilidad Unica (SRP). Es comun encontrar en codebases legacy una sola clase PHP que gestiona: catalogo de productos, carrito de compra, pedidos, calculo de precios, gestion de clientes, inventario, envios, devoluciones, notificaciones, analytics, y renderizado HTML.
+Cuando la **estructura y arquitectura** de un codigo legacy viola los principios basicos de diseño, se crean problemas sistematicos que afectan a todo el codebase. Este grupo cubre los antipatrones estructurales mas comunes observados en codebases PHP legacy de e-commerce.
 
 ## Antipatrones identificados
 
@@ -17,7 +17,9 @@ Una clase que hace **demasiadas cosas**, violando el Principio de Responsabilida
 | 7 | **Hardcoded Infrastructure** | IDs (`579314`), tax rates, magic numbers (`36`, `9000`) | 🟠 Alto |
 | 8 | **Infrastructure Leakage** | Queries SQL inline mezclados con logica de negocio | 🟠 Alto |
 
-### 1. God Class
+### 1. God Class / Clase Dios
+
+Una clase que hace **demasiadas cosas**, violando el Principio de Responsabilidad Unica (SRP).
 
 ```php
 // OrderManager hace TODO:
@@ -27,7 +29,15 @@ Una clase que hace **demasiadas cosas**, violando el Principio de Responsabilida
 class OrderManager extends BaseManager { /* 1100+ lineas */ }
 ```
 
-### 2. God Method
+**Impacto:**
+- Imposible de testear unitariamente
+- Cualquier cambio tiene riesgo de romper funcionalidad no relacionada
+- Merge conflicts constantes en equipo
+- Onboarding de nuevos desarrolladores: semanas
+
+### 2. God Method / Metodo Dios
+
+Un metodo que contiene logica excesiva y demasiadas responsabilidades.
 
 ```php
 // Switch numerico sin semantica - que hace la accion 147?
@@ -40,7 +50,13 @@ public function executeAction(int $action, array $requestData): mixed {
 }
 ```
 
-### 3. Inheritance Abuse
+**Impacto:**
+- Dificultad extrema para añadir nuevas acciones
+- El metodo se convierte en bottleneck para cualquier cambio
+
+### 3. Inheritance Abuse / Abuso de Herencia
+
+Uso de herencia para reutilizar codigo en lugar de para modelar relaciones "es-un".
 
 ```php
 // BaseManager: DB, auth, templates, logging, config, translations, permissions
@@ -53,7 +69,13 @@ class OrderManager extends BaseManager {
 }
 ```
 
-### 4. Constructor Heavy
+**Impacto:**
+- Acoplamiento fuerte a la clase padre
+- Imposible cambiar la implementacion base sin afectar a todos los hijos
+
+### 4. Constructor Heavy / Constructor Sobrecargado
+
+El constructor realiza demasiada inicializacion y tiene efectos secundarios.
 
 ```php
 // Parent::__construct() hace:
@@ -65,7 +87,13 @@ class OrderManager extends BaseManager {
 // 12. Config merge   13. More state init
 ```
 
-### 5. High Cognitive Load
+**Impacto:**
+- Imposible instanciar la clase sin un contexto completo
+- Testing requiere mockear toda la cadena de inicializacion
+
+### 5. High Cognitive Load Architecture
+
+La arquitectura requiere mantener demasiado contexto mental para entender el flujo.
 
 Para entender `createOrder()` hay que rastrear:
 1. El numero de accion en el switch
@@ -76,7 +104,13 @@ Para entender `createOrder()` hay que rastrear:
 6. Los efectos secundarios (crea shipment, envia email)
 7. El HTML que renderiza
 
-### 6. Leaky Abstractions
+**Impacto:**
+- Solo los desarrolladores mas veteranos pueden modificar codigo con confianza
+- Bus factor = 1 o 2
+
+### 6. Leaky Abstractions / Abstracciones Permeables
+
+Las abstracciones filtran detalles de implementacion que deberian estar ocultos.
 
 ```php
 // Expone internals via getters
@@ -87,7 +121,13 @@ public function getCustomerData(): \stdClass { return $this->customerData; }
 $query = "SELECT * FROM orders WHERE id = $orderId AND store_id = $this->storeId";
 ```
 
+**Impacto:**
+- Cambiar la implementacion interna requiere cambiar todos los consumidores
+- No se puede refactorizar sin romper compatibilidad
+
 ### 7. Hardcoded Infrastructure
+
+Detalles de infraestructura (rutas, nombres de BD, IDs) hardcodeados en el codigo.
 
 ```php
 $this->storeId = 579314;          // ID hardcodeado
@@ -98,7 +138,13 @@ if ($quantity >= 7) {             // Threshold hardcodeado
 }
 ```
 
+**Impacto:**
+- Imposible desplegar en un entorno con estructura diferente
+- Migracion de BD requiere buscar y reemplazar en todo el codigo
+
 ### 8. Infrastructure Leakage
+
+Detalles de infraestructura (SQL, templates) se filtran en la logica de negocio.
 
 ```php
 // Logica de negocio con SQL inline
@@ -109,6 +155,10 @@ public function createOrder(array $request): array {
     // ... mas logica ...
 }
 ```
+
+**Impacto:**
+- La logica de dominio depende directamente de la implementacion de BD
+- Cambiar de base de datos requiere reescribir toda la clase
 
 ## Por que es un problema
 
@@ -125,7 +175,7 @@ La solucion implica **extraer bounded contexts** a servicios separados con respo
 ### Estructura de la solucion
 
 ```
-src/01-god-class/solution/
+src/01-structure-and-architecture/solution/
 ├── Config.php                    # Configuracion externalizada (replaces #7)
 ├── Result.php                    # Return type consistente (replaces mixed returns)
 ├── OrderStatus.php               # Enum para estados (replaces magic ints)
@@ -203,15 +253,15 @@ $result = $service->createOrder(new CreateOrderRequest(
 
 ```bash
 # Tests del antipatron (demuestran los problemas)
-vendor/bin/phpunit tests/01-god-class/OrderManagerTest.php
+vendor/bin/phpunit tests/01-structure-and-architecture/OrderManagerTest.php
 
 # Tests de la solucion (demuestran el comportamiento correcto)
-vendor/bin/phpunit tests/01-god-class/OrderServiceTest.php
-vendor/bin/phpunit tests/01-god-class/PricingServiceTest.php
-vendor/bin/phpunit tests/01-god-class/MoneyTest.php
+vendor/bin/phpunit tests/01-structure-and-architecture/OrderServiceTest.php
+vendor/bin/phpunit tests/01-structure-and-architecture/PricingServiceTest.php
+vendor/bin/phpunit tests/01-structure-and-architecture/MoneyTest.php
 
 # Todos los tests del grupo
-vendor/bin/phpunit tests/01-god-class/
+vendor/bin/phpunit tests/01-structure-and-architecture/
 ```
 
 ### Lo que demuestran los tests

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tests\GodClass;
+namespace Tests\StructureAndArchitecture;
 
-use AntiPatterns\GodClass\solution\Config;
-use AntiPatterns\GodClass\solution\Coupon;
-use AntiPatterns\GodClass\solution\PricingService;
-use AntiPatterns\GodClass\solution\TaxConfig;
-use AntiPatterns\GodClass\solution\DiscountConfig;
-use AntiPatterns\GodClass\solution\ValueObjects\Money;
+use AntiPatterns\StructureAndArchitecture\solution\Config;
+use AntiPatterns\StructureAndArchitecture\solution\Coupon;
+use AntiPatterns\StructureAndArchitecture\solution\PricingService;
+use AntiPatterns\StructureAndArchitecture\solution\TaxConfig;
+use AntiPatterns\StructureAndArchitecture\solution\DiscountConfig;
+use AntiPatterns\StructureAndArchitecture\solution\ValueObjects\Money;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -137,7 +137,7 @@ class PricingServiceTest extends TestCase
                 mediumThreshold: 2,
                 mediumPercentage: 0.08,
             ),
-            shipping: new \AntiPatterns\GodClass\solution\ShippingConfig(),
+            shipping: new \AntiPatterns\StructureAndArchitecture\solution\ShippingConfig(),
         );
 
         $service = new PricingService($config);
