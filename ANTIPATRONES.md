@@ -103,6 +103,52 @@
 76. [Numeric Suffix Columns](#76-numeric-suffix-columns)
 77. [Typo in Comments](#77-typo-in-comments)
 
+### [J. Integraciones y APIs](#j-integraciones-y-apis)
+78. [Retry Storm / Reintentos Descontrolados](#78-retry-storm--reintentos-descontrolados)
+79. [No Idempotency in External Operations](#79-no-idempotency-in-external-operations)
+80. [API Response Shape Coupling](#80-api-response-shape-coupling)
+81. [Vendor SDK Domain Leakage](#81-vendor-sdk-domain-leakage)
+
+### [K. Concurrencia y Consistencia](#k-concurrencia-y-consistencia)
+82. [Check-Then-Act Race Condition](#82-check-then-act-race-condition)
+83. [Transaction Script Without Transactions](#83-transaction-script-without-transactions)
+84. [Distributed Transaction Illusion](#84-distributed-transaction-illusion)
+
+### [L. Performance y Escalabilidad](#l-performance-y-escalabilidad)
+85. [Cache Aside Chaos](#85-cache-aside-chaos)
+86. [Premature Micro-Optimization](#86-premature-micro-optimization)
+87. [Batch Processing via Memory Explosion](#87-batch-processing-via-memory-explosion)
+
+### [M. Observabilidad y Operaci�n](#m-observabilidad-y-operacion)
+88. [Log-and-Pray](#88-log-and-pray)
+89. [Monitoring Blind Spots](#89-monitoring-blind-spots)
+90. [Configuration by Database](#90-configuration-by-database)
+
+### [N. Framework Casero Legacy](#n-framework-casero-legacy)
+91. [Homemade Framework Syndrome](#91-homemade-framework-syndrome)
+92. [Copy-Paste Inheritance Framework](#92-copy-paste-inheritance-framework)
+
+### [O. Deployment y Entornos](#o-deployment-y-entornos)
+93. [Snowflake Server](#93-snowflake-server)
+94. [Environment Drift](#94-environment-drift)
+95. [Feature Flags by Commenting Code](#95-feature-flags-by-commenting-code)
+
+### [P. Testing Legacy](#p-testing-legacy)
+96. [Integration Test as Unit Test](#96-integration-test-as-unit-test)
+97. [Mock Everything Syndrome](#97-mock-everything-syndrome)
+98. [Golden Master Dependency](#98-golden-master-dependency)
+
+### [Q. Dominio y Negocio](#q-dominio-y-negocio)
+99. [Business Rules by Convention](#99-business-rules-by-convention)
+100. [Zombie Features](#100-zombie-features)
+
+### [R. Legacy Socio-Technical Patterns](#r-legacy-socio-technical-patterns)
+101. [Fear-Driven Development](#101-fear-driven-development)
+102. [Knowledge Silos](#102-knowledge-silos)
+103. [Bus Factor One](#103-bus-factor-one)
+104. [Tribal Knowledge Architecture](#104-tribal-knowledge-architecture)
+105. [Ticket-Driven Architecture](#105-ticket-driven-architecture)
+106. [Copy-Paste Onboarding](#106-copy-paste-onboarding)
 ---
 
 ## A. Estructura y Arquitectura
