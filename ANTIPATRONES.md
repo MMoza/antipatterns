@@ -1555,6 +1555,849 @@ Indicativo de documentación descuidada.
 
 ---
 
+## J. Integraciones y APIs
+
+### 78. Retry Storm / Reintentos Descontrolados
+
+**Severidad:** 🔴 Crítico
+
+**Descripción:** Reintentos automáticos sin backoff exponencial, sin límite máximo y sin circuit breaker que colapsan servicios externos.
+
+**Evidencia:**
+```php
+// Reintento infinito sin límite ni backoff
+while (!$response->success) {
+    $response = $this->callExternalAPI($data);
+    // Sin sleep, sin max retries, sin circuit breaker
+    // Si el servicio externo está caído, bucle infinito
+}
+```
+
+**Impacto:**
+- Colapso en cascada de servicios externos
+- Consumo excesivo de CPU y red
+- DDoS accidental a APIs de terceros
+- Bloqueo del proceso principal
+
+**Cómo estrangularlo:**
+1. Implementar backoff exponencial con jitter
+2. Limitar reintentos a 3-5 máximo
+3. Añadir circuit breaker (ej: después de 5 fallos, abrir circuito por 30s)
+4. Usar colas asíncronas para reintentos en lugar de bucles síncronos
+
+### 79. No Idempotency in External Operations
+
+**Severidad:** 🔴 Crítico
+
+**Descripción:** Operaciones externas (pagos, envíos, notificaciones) que no son idempotentes y se ejecutan múltiples veces ante timeouts o reintentos.
+
+**Evidencia:**
+```php
+// Si el timeout ocurre, se reintenta sin idempotency key
+$payment = $this->paymentGateway->charge($amount, $cardToken);
+// Timeout → reintento → doble cobro al cliente
+// No hay idempotency key ni verificación de estado previo
+```
+
+**Impacto:**
+- Dobles cobros a clientes
+- Pedidos duplicados en sistemas externos
+- Notificaciones duplicadas (emails, SMS)
+- Inconsistencia financiera
+
+**Cómo estrangularlo:**
+1. Generar idempotency keys únicas por operación (UUID basado en orderId + action)
+2. Verificar estado previo antes de reintentar
+3. Usar transacciones con estado "pending" hasta confirmación
+4. Implementar compensación (reembolsos automáticos si se detecta duplicado)
+
+### 80. API Response Shape Coupling
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** El código interno depende directamente de la estructura anidada de respuestas de APIs externas sin capa de adaptación.
+
+**Evidencia:**
+```php
+// Acoplamiento directo al shape de la API externa
+$price = $response['data']['product']['pricing']['final']['amount'];
+$currency = $response['data']['product']['pricing']['final']['currency'];
+// Si la API cambia un nivel, todo se rompe
+// Si 'pricing' es null → Warning: Undefined array key
+```
+
+**Impacto:**
+- Cambios en APIs externas rompen el sistema internamente
+- Sin validación de estructura de respuesta
+- Errores silenciosos o warnings en producción
+
+**Cómo estrangularlo:**
+1. Crear capa Anti-Corruption Layer (ACL) que adapte respuestas externas a modelos internos
+2. Validar estructura de respuesta con schemas (JSON Schema, assert)
+3. Usar DTOs tipados para respuestas externas
+4. Implementar fallbacks graceful cuando la estructura cambia
+
+### 81. Vendor SDK Domain Leakage
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Objetos del SDK del proveedor (Stripe, PayPal, FedEx) se filtran directamente en la lógica de dominio.
+
+**Evidencia:**
+```php
+// El dominio conoce el SDK de Stripe directamente
+public function processPayment(\Stripe\Charge $stripeCharge): void {
+    $this->amount = $stripeCharge->amount;
+    $this->status = $stripeCharge->status;
+    // Si cambiamos de proveedor, hay que reescribir todo el dominio
+}
+
+// Retorno de SDK expuesto en la capa de dominio
+public function getPayment(): \Stripe\Charge {
+    return $this->payment;
+}
+```
+
+**Impacto:**
+- Imposible cambiar de proveedor sin reescribir dominio
+- Tests requieren mocks complejos del SDK
+- El dominio depende de librerías externas
+
+**Cómo estrangularlo:**
+1. Crear interfaces de abstracción (`PaymentGateway`, `ShippingProvider`)
+2. Adaptar respuestas del SDK a modelos internos (`PaymentResult`, `ShipmentStatus`)
+3. El dominio solo conoce interfaces, nunca implementaciones concretas
+4. Usar patrón Adapter para cada proveedor
+
+---
+
+## K. Concurrencia y Consistencia
+
+### 82. Check-Then-Act Race Condition
+
+**Severidad:** 🔴 Crítico
+
+**Descripción:** Verificar una condición y luego actuar sobre ella sin atomicidad, creando ventana de race condition.
+
+**Evidencia:**
+```php
+// TOCTOU: Time of Check to Time of Use
+if ($product->stock >= $quantity) {
+    // Entre el check y el update, otro proceso puede comprar el mismo stock
+    $this->db->exec("UPDATE products SET stock = stock - $quantity WHERE id = $id");
+}
+// Resultado: stock negativo bajo carga concurrente
+```
+
+**Impacto:**
+- Stock negativo
+- Overbooking de productos
+- Ventas que no se pueden cumplir
+- Inconsistencia de datos bajo carga
+
+**Cómo estrangularlo:**
+1. Usar UPDATE atómico con condición: `UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?`
+2. Verificar rows affected para saber si se ejecutó
+3. Usar transacciones con nivel de aislamiento adecuado
+4. Implementar locks optimistas (version column) o pesimistas (SELECT ... FOR UPDATE)
+
+### 83. Transaction Script Without Transactions
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Operaciones que modifican múltiples tablas sin envolver en transacciones de base de datos.
+
+**Evidencia:**
+```php
+// 3 updates separados, sin BEGIN/COMMIT
+$this->db->exec("UPDATE orders SET status = 2 WHERE id = $id");
+$this->db->exec("INSERT INTO shipments (order_id, status) VALUES ($id, 'pending')");
+$this->db->exec("UPDATE inventory SET stock = stock - 1 WHERE product_id = $pid");
+// Si el segundo falla, el primero ya se ejecutó → orden pagada sin shipment
+```
+
+**Impacto:**
+- Estado inconsistente si falla a mitad del proceso
+- Imposible rollback automático
+- Datos huérfanos en tablas hijas
+- Pedidos en estado imposible de reconciliar
+
+**Cómo estrangularlo:**
+1. Envolver operaciones relacionadas en `$db->beginTransaction()` / `$db->commit()`
+2. Usar `$db->rollBack()` en catch
+3. Identificar boundaries de transacción (todo lo que debe ser atómico junto)
+4. Considerar saga pattern para operaciones que cruzan múltiples bounded contexts
+
+### 84. Distributed Transaction Illusion
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Operaciones que cruzan múltiples bases de datos o esquemas sin garantía de atomicidad, asumiendo que "casi siempre funciona".
+
+**Evidencia:**
+```php
+// Update en tienda_db y servicios_db sin two-phase commit
+$this->db1->exec("UPDATE tienda_db.orders SET status = 2 WHERE id = $id");
+$this->db2->exec("UPDATE servicios_db.shipments SET status = 1 WHERE order_id = $id");
+// Si el segundo falla, el primero ya se ejecutó
+// No hay forma de garantizar atomicidad cross-schema
+```
+
+**Impacto:**
+- Inconsistencia entre esquemas
+- Sin forma de garantizar atomicidad cross-schema
+- Operaciones huérfanas en un esquema cuando el otro falla
+
+**Cómo estrangularlo:**
+1. Implementar saga pattern con compensación (si falla paso 2, deshacer paso 1)
+2. Usar event sourcing para reconstruir estado consistente
+3. Crear tabla de "outbox" para garantizar entrega eventual
+4. Diseñar sistemas para consistencia eventual en lugar de atomicidad distribuida
+
+---
+
+## L. Performance y Escalabilidad
+
+### 85. Cache Aside Chaos
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Cache invalidado de forma inconsistente en múltiples puntos del código, a veces sí, a veces no.
+
+**Evidencia:**
+```php
+// Cache se invalida en 5 lugares diferentes, de formas distintas
+public function updateProduct($id, $data) {
+    $this->db->update('products', $data, $id);
+    // A veces invalida cache, a veces no (depende de quién llama)
+    if ($data['price'] !== null) { // ¿Solo invalida si cambió precio?
+        $this->cache->delete("product_$id");
+    }
+    // Pero no invalida "product_list" cache → lista muestra precio viejo
+}
+```
+
+**Impacto:**
+- Datos stale en producción
+- Bugs intermitentes difíciles de reproducir
+- Inconsistencia entre cache y base de datos
+- Usuarios ven información incorrecta
+
+**Cómo estrangularlo:**
+1. Centralizar invalidación de cache en un solo lugar (CacheManager)
+2. Usar patrón Cache-Aside consistente: invalidar SIEMPRE después de write
+3. Implementar TTLs cortos como fallback de seguridad
+4. Usar versionado de keys de cache para invalidación másica
+
+### 86. Premature Micro-Optimization
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Optimizaciones prematuras que complican el código sin beneficio medible, basadas en suposiciones en lugar de profiling.
+
+**Evidencia:**
+```php
+// "Optimización" prematura: evita foreach por "performance"
+for ($i = 0, $count = count($items); $i < $count; $i++) {
+    // Código menos legible sin beneficio real
+    // count() fuera del loop no mejora nada en PHP
+    processItem($items[$i]);
+}
+
+// "Optimización": usar isset() en lugar de property_exists()
+// para "ahorrar nanosegundos" pero rompe con propiedades null
+```
+
+**Impacto:**
+- Código menos legible y mantenible
+- Bugs introducidos por "optimizaciones"
+- Tiempo desperdiciado optimizando lo que no necesita optimización
+- El verdadero bottleneck sigue sin resolver
+
+**Cómo estrangularlo:**
+1. Medir primero con profiling (Xdebug, Blackfire, New Relic)
+2. Optimizar solo lo que el profiling muestra como bottleneck real
+3. Escribir código claro primero, optimizar después si es necesario
+4. Documentar por qué se hizo una optimización no obvia
+
+### 87. Batch Processing via Memory Explosion
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Procesamiento de lotes que carga todos los registros en memoria en lugar de usar chunks o cursores.
+
+**Evidencia:**
+```php
+// Carga 100,000 registros en memoria para procesarlos
+$allOrders = $this->db->query("SELECT * FROM orders WHERE status = 1")->fetchAll();
+foreach ($allOrders as $order) {
+    $this->processOrder($order);
+    // 100,000 objetos Order en memoria simultáneamente
+}
+// Memory exhausted en producción cuando orders crece
+```
+
+**Impacto:**
+- Out of memory en producción
+- Imposible escalar con crecimiento de datos
+- Degradación progresiva (funciona con 1000 registros, falla con 100,000)
+
+**Cómo estrangularlo:**
+1. Usar chunks: `SELECT ... LIMIT 1000 OFFSET $offset` en bucle
+2. Usar cursores (PDO::FETCH_ASSOC con fetch() en lugar de fetchAll())
+3. Implementar procesamiento asíncrono con colas
+4. Usar generators de PHP para iterar sin cargar todo en memoria
+
+---
+
+## M. Observabilidad y Operación
+
+### 88. Log-and-Pray
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Logging excesivo sin estructura, sin niveles apropiados, sin request ID de correlación.
+
+**Evidencia:**
+```php
+// Logs sin estructura, sin request ID, sin contexto útil
+error_log("ERROR: algo falló");
+error_log("DEBUG: valor de x = " . $x);
+error_log("INFO: proceso terminado");
+error_log(print_r($order, true)); // Dump de objeto completo en cada request
+// Imposible correlacionar logs de una misma request
+// 50GB de logs al día, 99% ruido
+```
+
+**Impacto:**
+- Logs inutilizables para debugging
+- Sin forma de trazar una request completa
+- Almacenamiento excesivo de logs
+- Información sensible puede acabar en logs
+
+**Cómo estrangularlo:**
+1. Usar logger estructurado (PSR-3) con niveles apropiados
+2. Añadir request ID/correlation ID a todos los logs
+3. Loggear contexto relevante (orderId, userId) no dumps completos
+4. Implementar log sampling para requests de alto volumen
+
+### 89. Monitoring Blind Spots
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Métricas solo en puntos obvios (inicio/fin), sin coverage de flujos críticos intermedios.
+
+**Evidencia:**
+```php
+// Solo se loggea el inicio y fin, nada del medio
+$this->log("Proceso de checkout iniciado");
+// ... 200 líneas de lógica sin ningún log ni métrica ...
+// Cálculo de envío, aplicación de cupones, validación de stock, pago ...
+$this->log("Proceso de checkout terminado");
+// Si falla en medio, no hay forma de saber dónde ni por qué
+```
+
+**Impacto:**
+- Incidents sin contexto para debugging
+- MTTR (Mean Time to Resolution) alto
+- Imposible detectar degradación gradual
+- "Funciona o no funciona" sin puntos intermedios
+
+**Cómo estrangularlo:**
+1. Identificar puntos críticos del flujo y añadir métricas
+2. Usar distributed tracing (OpenTelemetry, Jaeger)
+3. Implementar health checks para dependencias externas
+4. Crear dashboards con SLOs por componente
+
+### 90. Configuration by Database
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Configuración del sistema almacenada en base de datos en lugar de environment variables o archivos de configuración.
+
+**Evidencia:**
+```php
+// Configuración leída de BD en cada request
+$config = $this->db->query("SELECT * FROM system_config")->fetchAll();
+define('MAX_ITEMS', $config['max_items']);
+define('DEBUG_MODE', $config['debug']);
+define('API_KEY', $config['api_key']); // ¡Secrets en BD!
+// Query adicional en cada request para leer config
+```
+
+**Impacto:**
+- Query adicional en cada request (performance)
+- Configuración no versionable en git
+- Secrets en BD en lugar de vault/env vars
+- Imposible tener config por entorno fácilmente
+
+**Cómo estrangularlo:**
+1. Mover configuración a environment variables (.env)
+2. Usar archivos de configuración versionables (YAML, PHP arrays)
+3. Cache de configuración en memoria (opcode cache)
+4. Secrets en vault o servicio de gestión de secretos
+
+---
+
+## N. Framework Casero Legacy
+
+### 91. Homemade Framework Syndrome
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Framework propio construido sobre años con patrones inconsistentes, sin documentación y con sintaxis única.
+
+**Evidencia:**
+```php
+// Router propio con sintaxis única que nadie conoce
+$router->add('accion', function($params) {
+    // Cada módulo tiene su propia convención de nombres
+    // Algunos usan $params, otros $_GET, otros $this->request
+});
+
+// "Helper" global que hace de todo
+function helper($action, $data = null) {
+    switch ($action) {
+        case 'db': return Database::getInstance();
+        case 'log': return Logger::getInstance();
+        case 'auth': return Auth::check();
+        // 50 cases más...
+    }
+}
+```
+
+**Impacto:**
+- Onboarding de semanas para entender el framework
+- Sin documentación externa disponible
+- Imposible encontrar ayuda en StackOverflow
+- No sigue ningún estándar (PSR, MVC, etc.)
+
+**Cómo estrangularlo:**
+1. Identificar bounded contexts y extraerlos como módulos independientes
+2. Implementar adaptadores que traduzcan del framework legacy a estándares
+3. Migrar gradualmente a framework estándar (Symfony, Laravel)
+4. Usar Strangler Fig: nuevo código en framework moderno, legacy se deprecia
+
+### 92. Copy-Paste Inheritance Framework
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** "Reutilización" de código vía copiar y pegar archivos base entre módulos en lugar de herencia o composición.
+
+**Evidencia:**
+```
+modules/invoices/controller.php    ← copiado de modules/orders/controller.php
+modules/returns/controller.php     ← copiado de modules/invoices/controller.php
+modules/shipping/controller.php    ← copiado de modules/returns/controller.php
+```
+
+```php
+// Cada controller tiene el mismo código con pequeñas variaciones
+public function listAction() {
+    // 80 líneas idénticas en los 4 módulos
+    // Si hay un bug, hay que fixear en 4 lugares
+    // Y siempre se olvida alguno
+}
+```
+
+**Impacto:**
+- Bug fix en un módulo requiere copiar a todos los demás
+- Divergencia silenciosa entre módulos
+- Imposible saber cuál versión es la "correcta"
+- Código duplicado crece exponencialmente
+
+**Cómo estrangularlo:**
+1. Identificar patrones comunes y extraer a clase base o trait
+2. Usar composición en lugar de herencia para comportamiento compartido
+3. Implementar patrón Template Method para variaciones
+4. Crear tests que verifiquen comportamiento consistente entre módulos
+
+---
+
+## O. Deployment y Entornos
+
+### 93. Snowflake Server
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Servidores de producción configurados manualmente, cada uno único e irrepetible, sin infrastructure as code.
+
+**Evidencia:**
+- SSH para configurar cada servidor manualmente
+- "Este servidor tiene un fix especial que no está en los demás"
+- Sin Ansible, Terraform, Docker ni nada reproducible
+- Solo una persona sabe cómo está configurado
+
+**Impacto:**
+- Imposible reproducir bugs de producción
+- Deployments inconsistentes entre servidores
+- Bus factor = 1 (solo una persona sabe la config)
+- Recovery ante desastre imposible
+
+**Cómo estrangularlo:**
+1. Documentar configuración actual de cada servidor
+2. Implementar infrastructure as code (Terraform, Ansible)
+3. Containerizar aplicación (Docker)
+4. Automatizar deployments (CI/CD)
+
+### 94. Environment Drift
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Diferencias significativas entre dev, staging y producción en versiones, configuración y datos.
+
+**Evidencia:**
+- Dev: SQLite, staging: MySQL 5.7, prod: MySQL 8.0
+- Diferentes versiones de PHP entre entornos (dev: 8.2, prod: 7.4)
+- Configuración de BD diferente en cada entorno
+- "En staging funciona" es la respuesta habitual
+
+**Impacto:**
+- "Funciona en mi máquina"
+- Bugs solo aparecen en producción
+- Imposible reproducir issues localmente
+- Testing poco confiable
+
+**Cómo estrangularlo:**
+1. Usar Docker para igualar entornos
+2. Versionar configuración de entornos
+3. Usar same DB engine en todos los entornos
+4. Implementar CI/CD que use el mismo artefacto en todos los entornos
+
+### 95. Feature Flags by Commenting Code
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Activar/desactivar funcionalidad comentando y descomentando código en lugar de usar feature flags reales.
+
+**Evidencia:**
+```php
+// TODO: descomentar cuando el módulo de envíos esté listo
+// $this->calculateShipping();
+// $this->assignCarrier();
+
+// FIXME: desactivado temporalmente por bug
+// $this->sendConfirmationEmail($order);
+```
+
+**Impacto:**
+- Merge conflicts frecuentes
+- Sin forma de toggle en runtime
+- Código muerto que nunca se limpia
+- Historial de git lleno de "comenté/descomenté"
+
+**Cómo estrangularlo:**
+1. Implementar sistema de feature flags (configuración o servicio)
+2. Usar feature flags para toggles en runtime
+3. Limpiar código comentado periódicamente
+4. Usar branching strategy adecuada (feature flags > comentar código)
+
+---
+
+## P. Testing Legacy
+
+### 96. Integration Test as Unit Test
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Tests llamados "unitarios" que requieren base de datos, Redis, APIs externas y otros servicios corriendo.
+
+**Evidencia:**
+```php
+// Se llama "test unitario" pero requiere:
+// - Base de datos real corriendo
+// - Redis corriendo
+// - API externa disponible
+public function testCreateOrder() {
+    $order = $this->orderManager->createOrder([...]);
+    $this->assertNotEmpty($order);
+    // Si MySQL no está corriendo, el test falla
+    // Si la API de pagos está caída, el test falla
+}
+```
+
+**Impacto:**
+- Tests lentos (segundos en lugar de milisegundos)
+- Flaky tests por dependencias externas
+- Imposible ejecutar tests sin infraestructura
+- CI/CD lento y poco confiable
+
+**Cómo estrangularlo:**
+1. Usar SQLite en memoria para tests de BD
+2. Mockear APIs externas con responses predefinidas
+3. Separar tests unitarios (rápidos) de integration (lentos)
+4. Usar test containers para tests de integración controlados
+
+### 97. Mock Everything Syndrome
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Tests que mockean tantas cosas que no testean nada real, dando falsa sensación de seguridad.
+
+**Evidencia:**
+```php
+// Test que mockea todo y no verifica comportamiento real
+$mockDb->method('query')->willReturn([]);
+$mockEmail->method('send')->willReturn(true);
+$mockPayment->method('charge')->willReturn(['success' => true]);
+$mockInventory->method('reserve')->willReturn(true);
+// El test pasa pero no verifica nada útil
+// Si el código real cambia, el test sigue pasando
+```
+
+**Impacto:**
+- Tests verdes pero código roto en producción
+- Falsa sensación de seguridad
+- Tests que no detectan regresiones
+- Código no testeado disfrazado de testeado
+
+**Cómo estrangularlo:**
+1. Mockear solo dependencias externas, no lógica interna
+2. Usar tests de integración para verificar flujos completos
+3. Verificar comportamiento, no solo que se llamen métodos
+4. Implementar contract tests para integraciones
+
+### 98. Golden Master Dependency
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Tests que dependen de un "golden master" o fixture de hace años que nadie entiende ni sabe si es correcto.
+
+**Evidencia:**
+```php
+// Test compara output con archivo "golden" de hace 3 años
+$expected = file_get_contents('tests/fixtures/golden_output_2021.json');
+$this->assertEquals($expected, $actual);
+// Nadie sabe por qué ese es el output correcto
+// Si el golden master tiene bugs, el test valida bugs
+```
+
+**Impacto:**
+- Tests imposibles de actualizar con confianza
+- Golden master puede ser incorrecto desde el inicio
+- Cambios legítimos rompen tests sin forma de validar
+- Fixture crece y se vuelve inmanejable
+
+**Cómo estrangularlo:**
+1. Reemplazar golden master con aserciones específicas
+2. Verificar propiedades del output en lugar de equality total
+3. Crear tests que verifiquen comportamiento, no output exacto
+4. Usar snapshot testing con revisión manual de cambios
+
+---
+
+## Q. Dominio y Negocio
+
+### 99. Business Rules by Convention
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Reglas de negocio implícitas en el código, no explícitas ni documentadas, descubribles solo leyendo implementación.
+
+**Evidencia:**
+```php
+// Regla de negocio: pedidos > 5000 son VIP y tienen descuento especial
+// Pero no está documentada, solo existe en el código
+if ($total > 5000) {
+    $order->is_vip = 1;
+    $order->discount = 0.05; // 5% de descuento "mágico"
+}
+// Si alguien cambia 5000 a 3000, rompe la regla de negocio sin saberlo
+// Nadie sabe por qué es 5000, ni quién lo decidió
+```
+
+**Impacto:**
+- Reglas de negocio perdidas en el código
+- Cambios accidentales rompen lógica de negocio
+- Imposible auditar reglas de negocio
+- Nuevos desarrolladores no conocen las reglas
+
+**Cómo estrangularlo:**
+1. Extraer reglas de negocio a clases específicas (Specification pattern)
+2. Documentar reglas de negocio en código y documentación externa
+3. Usar nombres descriptivos para constantes y umbrales
+4. Crear tests que verifiquen reglas de negocio explícitamente
+
+### 100. Zombie Features
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Funcionalidades que existen en el código pero nadie usa, mantenidas "por si acaso".
+
+**Evidencia:**
+```php
+// Módulo de "wishlist" que nadie ha usado en 2 años
+public function addToWishlist($productId, $userId) {
+    // 50 líneas de lógica...
+    // Tabla wishlist en BD con 3 registros desde 2022
+}
+// No hay analytics que muestren uso
+// Pero no se puede eliminar "por si acaso"
+// Cada deploy se prueba "por si acaso"
+```
+
+**Impacto:**
+- Código muerto que se mantiene y prueba
+- Complejidad innecesaria
+- Confusión para nuevos desarrolladores
+- Costo de mantenimiento continuo
+
+**Cómo estrangularlo:**
+1. Implementar analytics para verificar uso real
+2. Desactivar feature con feature flag antes de eliminar
+3. Si nadie reporta ausencia en 30 días, eliminar código
+4. Archivar código en git tag por si se necesita restaurar
+
+---
+
+## R. Legacy Socio-Technical Patterns
+
+### 101. Fear-Driven Development
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Miedo a tocar código legacy que "funciona", resultando en workarounds en lugar de fixes reales.
+
+**Evidencia:**
+- "No toques ese módulo, lleva funcionando 5 años"
+- PRs rechazados por "demasiado riesgo"
+- Workarounds en lugar de fixes: "mejor añade otro if en lugar de cambiar la lógica"
+- Código legacy rodeado de `// NO TOCAR` comments
+
+**Impacto:**
+- Deuda técnica acumulativa
+- Imposibilidad de innovar o mejorar
+- Código cada vez más complejo por workarounds
+- Moral del equipo afectada
+
+**Cómo estrangularlo:**
+1. Añadir tests de caracterización antes de tocar código legacy
+2. Refactorizar incrementalmente con seguridad de tests
+3. Celebrar mejoras de código legacy, no castigar fallos
+4. Usar Strangler Fig para reemplazar gradualmente
+
+### 102. Knowledge Silos
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** Solo una persona entiende cada módulo del sistema, creando bottlenecks y riesgo operativo.
+
+**Evidencia:**
+- "Pregunta a Carlos, él escribió eso"
+- "Ese módulo solo lo entiende María"
+- Documentación inexistente o desactualizada
+- Carlos y María no pueden tomar vacaciones
+
+**Impacto:**
+- Bottleneck en personas específicas
+- Imposibilidad de redistribuir trabajo
+- Riesgo si alguien se va de la empresa
+- Velocidad de desarrollo limitada
+
+**Cómo estrangularlo:**
+1. Pair programming para transferir conocimiento
+2. Documentar módulos críticos (READMEs, diagrams)
+3. Rotar responsabilidades entre equipo
+4. Crear sesiones de "code walkthrough" regulares
+
+### 103. Bus Factor One
+
+**Severidad:** 🔴 Crítico
+
+**Descripción:** Si una persona se va, el sistema colapsa porque es la única que sabe operaciones críticas.
+
+**Evidencia:**
+- Una persona es el único que sabe deployar a producción
+- Una persona es el único que entiende el esquema de BD
+- Una persona es el único que puede debugear ciertos errores
+- "Si Juan se va, estamos jodidos"
+
+**Impacto:**
+- Riesgo existencial para el negocio
+- Imposibilidad de vacaciones para esa persona
+- Presión extrema sobre individuos clave
+- Imposibilidad de escalar equipo
+
+**Cómo estrangularlo:**
+1. Documentar procedimientos críticos inmediatamente
+2. Cross-training: cada conocimiento debe tener al menos 2 personas
+3. Automatizar procesos manuales (deployments, backups)
+4. Crear runbooks para operaciones comunes
+
+### 104. Tribal Knowledge Architecture
+
+**Severidad:** 🟠 Alto
+
+**Descripción:** La arquitectura y decisiones de diseño existen solo en la cabeza de los veteranos, no en documentación.
+
+**Evidencia:**
+- Diagramas de arquitectura desactualizados (o inexistentes)
+- "Así se hizo porque en 2018 había un bug con el servidor de emails"
+- Decisiones de diseño no documentadas
+- Nuevos desarrolladores toman decisiones que contradicen decisiones pasadas
+
+**Impacto:**
+- Nuevos desarrolladores toman decisiones incorrectas
+- Se repiten errores del pasado
+- Arquitectura inconsistente
+- Pérdida de contexto cuando alguien se va
+
+**Cómo estrangularlo:**
+1. Sesiones de documentación con veteranos
+2. Architecture Decision Records (ADRs) para decisiones futuras
+3. Diagramas actualizados en el repositorio
+4. Onboarding estructurado con contexto histórico
+
+### 105. Ticket-Driven Architecture
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** La arquitectura evoluciona solo vía tickets individuales, sin visión global ni plan de refactorización.
+
+**Evidencia:**
+- Cada ticket se resuelve de forma aislada
+- Sin refactorización planificada
+- "Si no está en el ticket, no lo toques"
+- Parches sobre parches sin visión de conjunto
+
+**Impacto:**
+- Arquitectura reactiva, no proactiva
+- Deuda técnica acumulativa
+- Soluciones subóptimas por scope limitado
+- Imposibilidad de mejoras estructurales
+
+**Cómo estrangularlo:**
+1. Incluir "tech debt" como categoría de tickets
+2. Dedicar % de sprint a mejoras arquitectónicas
+3. Crear roadmap técnico junto a roadmap de producto
+4. Revisar arquitectura periódicamente
+
+### 106. Copy-Paste Onboarding
+
+**Severidad:** 🟡 Medio
+
+**Descripción:** Onboarding de nuevos desarrolladores vía "copia lo que hizo el anterior" en lugar de setup automatizado.
+
+**Evidencia:**
+- "Para configurar tu entorno, copia la carpeta de Juan"
+- Sin setup automatizado (Makefile, docker-compose up)
+- Documentación de setup desactualizada
+- "Si te da error X, haz Y" (conocimiento tribal)
+
+**Impacto:**
+- Onboarding de semanas en lugar de horas
+- Entornos de desarrollo inconsistentes
+- "Funciona en mi máquina" desde el día 1
+- Dependencia de personas para setup
+
+**Cómo estrangularlo:**
+1. Crear setup automatizado (docker-compose, Makefile)
+2. Documentar setup paso a paso y verificarlo con nuevos devs
+3. Un comando para tener el entorno funcionando
+4. CI que verifique que el setup funciona desde cero
+
+---
+
 ## Mapa de Relaciones entre Antipatrones
 
 ```
@@ -1599,66 +2442,6 @@ Indicativo de documentación descuidada.
 
 ---
 
-## Priorización para Estrangulamiento
-
-### Fase 1: Seguridad (Inmediato)
-1. SQL Injection → Prepared statements
-2. SSL Verification Disabled → Activar verificación
-3. Security Anti-Patterns → Hash seguro, validación de inputs
-
-### Fase 2: Separación de Responsabilidades
-4. God Class → Extraer bounded contexts
-5. Presentation Mixed with Domain → Separar API de templates
-6. Action-Based Routing → Endpoints semánticos
-
-### Fase 3: Modelado de Dominio
-7. Primitive Obsession → Value objects
-8. stdClass como Modelo Universal → DTOs tipados
-9. Array-Based Domain Modeling → Objetos con comportamiento
-
-### Fase 4: Estado y Acoplamiento
-10. Mutable Shared State → Inmutabilidad
-11. Temporal Coupling → Validación de precondiciones
-12. Hidden Side Effects → CQS
-
-### Fase 5: Database Refactoring
-13. Wide Tables → Extraer tablas hijas
-14. Repeating Groups → Normalizar a 1NF
-15. DOUBLE/VARCHAR for Money → DECIMAL
-16. Missing FKs → Añadir constraints gradualmente
-17. Cross-Schema Queries → Capa de abstracción
-
-### Fase 6: Mantenibilidad
-18. Dead Code → Eliminar
-19. DRY Violations → Extraer métodos compartidos
-20. Mixed Language Naming → Estandarizar
-21. Magic Numbers → Constantes con nombre
-
----
-
-## Estrategias de Estrangulamiento
-
-### Strangler Fig Pattern
-1. Identificar un bounded context pequeño
-2. Crear nuevo servicio/controller para ese contexto
-3. Redirigir las acciones correspondientes al nuevo servicio
-4. Repetir hasta que la God Class quede como facade vacío
-5. Eliminar la God Class
-
-### Parallel Implementation
-1. Implementar nueva arquitectura en paralelo
-2. Usar feature flags para cambiar entre viejo y nuevo
-3. Migrar gradualmente funcionalidad
-4. Eliminar código legacy cuando todo esté migrado
-
-### Anti-Corruption Layer
-1. Crear capa de adaptación entre legacy y nuevo código
-2. El ACL traduce entre modelos antiguos y nuevos
-3. Permite que el nuevo código tenga diseño limpio
-4. El legacy se deprecia gradualmente
-
----
-
 ## Resumen por Conteo
 
 | Categoría | # Antipatrones | Rango |
@@ -1672,7 +2455,16 @@ Indicativo de documentación descuidada.
 | G. Presentación y Comunicación | 4 | 35-38 |
 | H. Database Design | 27 | 39-65 |
 | I. Naming | 12 | 66-77 |
-| **TOTAL** | **77** | |
+| J. Integraciones y APIs | 4 | 78-81 |
+| K. Concurrencia y Consistencia | 3 | 82-84 |
+| L. Performance y Escalabilidad | 3 | 85-87 |
+| M. Observabilidad y Operación | 3 | 88-90 |
+| N. Framework Casero Legacy | 2 | 91-92 |
+| O. Deployment y Entornos | 3 | 93-95 |
+| P. Testing Legacy | 3 | 96-98 |
+| Q. Dominio y Negocio | 2 | 99-100 |
+| R. Legacy Socio-Technical | 6 | 101-106 |
+| **TOTAL** | **106** | |
 
 ---
 
